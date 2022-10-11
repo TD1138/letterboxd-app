@@ -35,6 +35,17 @@ def download_file_from_drive(file_id):
         print(F'Download {int(status.progress() * 100)}.')
     return file.getvalue()
 
+def upload_file_to_drive(file_id):
+    # request = service.files().get_media(fileId=file_id)
+    # file = io.BytesIO()
+    # downloader = MediaIoBaseDownload(file, request)
+    # done = False
+    # while done is False:
+    #     status, done = downloader.next_chunk()
+    #     print(F'Download {int(status.progress() * 100)}.')
+    # return file.getvalue()
+    print('tmp;')
+
 # creds = None
 # if os.path.exists(token_path):
 #     creds = Credentials.from_authorized_user_file(token_path, SCOPES)
