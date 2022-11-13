@@ -1,15 +1,12 @@
 import os
 import io
-
-from google.auth.transport.requests import Request
-
-# from google.oauth2.credentials import Credentials
-from google.oauth2 import credentials, service_account
-
-from google_auth_oauthlib.flow import InstalledAppFlow
+# from google.auth.transport.requests import Request
+# from google_auth_oauthlib.flow import InstalledAppFlow
+from google.oauth2 import service_account
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from googleapiclient.http import MediaIoBaseDownload
+from googleapiclient.http import MediaIoBaseDownload, MediaFileUpload
+
 
 from dotenv import load_dotenv
 
@@ -21,9 +18,8 @@ creds_path = os.path.join(os.getenv('PROJECT_PATH'), 'creds/credentials.json')
 token_path = os.path.join(os.getenv('PROJECT_PATH'), 'creds/token.json')
 service_account_path = os.path.join(os.getenv('PROJECT_PATH'), 'creds/service_account.json')
 
-
-
 credentials = service_account.Credentials.from_service_account_file(service_account_path, scopes= SCOPES)
+service = build('drive', 'v3', credentials=credentials)
 
 def download_file_from_drive(file_id):
     request = service.files().get_media(fileId=file_id)
@@ -35,17 +31,14 @@ def download_file_from_drive(file_id):
         print(F'Download {int(status.progress() * 100)}.')
     return file.getvalue()
 
-def upload_file_to_drive(file_id):
-    # request = service.files().get_media(fileId=file_id)
-    # file = io.BytesIO()
-    # downloader = MediaIoBaseDownload(file, request)
-    # done = False
-    # while done is False:
-    #     status, done = downloader.next_chunk()
-    #     print(F'Download {int(status.progress() * 100)}.')
-    # return file.getvalue()
-    print('tmp;')
-
+def upload_file_to_drive(file_name, file_path):
+    try:
+        file_metadata = {'name': file_name}
+        media = MediaFileUpload(file_path, resumable=True)
+        file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
+        print('Upload of {} sucessful'.format(file_name))
+    except:
+        print('Upload of {} unsucessful'.format(file_name))
 # creds = None
 # if os.path.exists(token_path):
 #     creds = Credentials.from_authorized_user_file(token_path, SCOPES)
@@ -63,14 +56,14 @@ def upload_file_to_drive(file_id):
 #         token.write(creds.to_json(token_path))
 
 # credentials = Credentials.from_authorized_user_file(creds)
-service = build('drive', 'v3', credentials=credentials)
+# service = build('drive', 'v3', credentials=credentials)
 
-results = service.files().list(pageSize=10, fields="nextPageToken, files(id, name)").execute()
+# results = service.files().list(pageSize=10, fields="nextPageToken, files(id, name)").execute()
 
-items = results.get('files', [])
+# items = results.get('files', [])
 
-print('Files:')
-for item in items:
-    if item['name'][-4:] == '.txt':
-        print('{} ({})'.format(item['name'], item['id']))
-        print(download_file_from_drive(item['id']))
+# print('Files:')
+# for item in items:
+#     if item['name'][-4:] == '.txt':
+#         print('{} ({})'.format(item['name'], item['id']))
+#         print(download_file_from_drive(item['id']))

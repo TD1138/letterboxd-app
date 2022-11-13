@@ -3,8 +3,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-db_name = 'lb-film.db'
-film_db_path = os.path.join(data_loc, db_name)
+# db_name = 'lb-film.db'
+# film_db_path = os.path.join(data_loc, db_name)
 
 def db_info(db_path):
     '''

@@ -29,7 +29,7 @@ def download_letterboxd_zip(hide_actions=True):
         signin_button = driver.find_element(By.XPATH, '//*[@id="signin-form"]/fieldset/div[4]/div/input')
         signin_button.click()
         driver.execute_script('window.open("{}","_blank");'.format(os.getenv('LETTERBOXD_EXPORT_LINK')))
-        time.sleep(5)
+        time.sleep(10)
         print('Download Successful')
     except:
         print('Download Failed')
