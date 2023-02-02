@@ -1,0 +1,68 @@
+{
+    
+    "WATCHED": [
+        ["FILM_ID", "TEXT", "PRIMARY KEY"]
+    ],
+
+    "WATCHLIST": [
+        ["FILM_ID", "TEXT", "PRIMARY KEY"],
+        ["ADDED_DATE", "TEXT", "NOT NULL"]
+    ],
+
+    "FILM_TITLE": [
+        ["FILM_ID", "TEXT", "PRIMARY KEY"],
+        ["FILM_TITLE", "TEXT", "NOT NULL"],
+        ["FILM_URL_TITLE", "TEXT"],
+        ["LETTERBOXD_URL", "TEXT", "NOT NULL"]
+    ],
+
+    "FILM_YEAR": [
+        ["FILM_ID", "TEXT", "PRIMARY KEY"],
+        ["FILM_YEAR", "INTEGER", "NOT NULL"],
+        ["FILM_DECADE", "TEXT", "NOT NULL"]
+    ],
+
+    "PERSONAL_RATING": [
+        ["FILM_ID", "TEXT", "PRIMARY KEY"],
+        ["FILM_RATING_BASIC", "REAL"],
+        ["FILM_RATING_SCALED", "REAL"],
+        ["FILM_RATING_PERCENT", "REAL"]
+    ],
+
+    "FILM_LETTERBOXD_STATS": [
+        ["FILM_ID", "TEXT", "PRIMARY KEY"],
+        ["FILM_WATCH_COUNT", "INTEGER"],
+        ["FILM_FAN_COUNT", "INTEGER"],
+        ["FILM_LIKES_COUNT", "INTEGER"],
+        ["FILM_REVIEW_COUNT", "INTEGER"],
+        ["FILM_LIST_COUNT", "INTEGER"],
+        ["FILM_TOP_250", "INTEGER"],
+        ["FILM_RATING", "REAL"],
+        ["FILM_RATING_COUNT", "INTEGER"]
+    ],
+
+    "FILM_AVAILABILITY": [
+        ["FILM_ID", "TEXT", "PRIMARY KEY"],
+        ["FILM_AVAILABLE", "TEXT", "DEFAULT NO"],
+        ["STREAMING_SERVICE", "TEXT"]
+    ],
+
+    "FILM_GENRE": [
+        ["FILM_ID", "TEXT", "PRIMARY KEY"],
+        ["FILM_GENRE", "TEXT", "NOT NULL"]
+    ],
+
+    "DIARY": [
+        ["FILM_ID", "TEXT", "PRIMARY KEY"],
+        ["DIARY_DATE", "TEXT"],
+        ["FILM_RATING", "REAL"],
+        ["TAGS", "TEXT"],
+        ["FIRST_TIME_WATCH", "INTEGER", "DEFAULT 0"]
+    ],
+
+    "INGESTED": [
+        ["FILM_ID", "TEXT", "PRIMARY KEY"],
+        ["INGESTION_DATE", "TEXT", "NOT NULL"]
+    ]
+
+}

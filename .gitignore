@@ -4,9 +4,6 @@
 # environment
 letterboxd-env/
 
-# local requirements (add to requirements-core if they need persisting!)
-requirements.txt
-
 # local letterboxd exports
 db/raw_exports/
 

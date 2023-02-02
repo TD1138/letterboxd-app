@@ -9,19 +9,18 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-chromedriver_autoinstaller.install()
-
 def download_letterboxd_zip(hide_actions=True):
     try:
+        chromedriver_autoinstaller.install()
         chrome_options = Options()
         if hide_actions: chrome_options.add_argument("--headless")
-        prefs = {"download.default_directory" : os.getenv('PROJECT_PATH')+'/db/raw_exports//', "directory_upgrade": True}
+        prefs = {"download.default_directory" : os.getenv('PROJECT_PATH')+'\\db\\raw_exports\\', "directory_upgrade": True}
         chrome_options.add_experimental_option("prefs", prefs)
         driver = webdriver.Chrome(options=chrome_options)
         driver.get(os.getenv('LETTERBOXD_SETTINGS_PAGE'))
         driver.implicitly_wait(10)
-        accept_cookies = driver.find_element(By.CLASS_NAME, 'fc-button-label')
-        accept_cookies.click()
+#         accept_cookies = driver.find_element(By.CLASS_NAME, 'fc-button-label')
+#         accept_cookies.click()
         username = driver.find_element(By.XPATH, '//*[@id="signin-username"]')
         username.send_keys(os.getenv('LETTERBOXD_USER'))
         password = driver.find_element(By.XPATH, '//*[@id="signin-password"]')

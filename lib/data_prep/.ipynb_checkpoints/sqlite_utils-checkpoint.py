@@ -3,10 +3,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# db_name = 'lb-film.db'
-# film_db_path = os.path.join(data_loc, db_name)
+local_db_path = os.path.join(os.getenv('PROJECT_PATH'), 'lb-film.db')
 
-def db_info(db_path):
+def db_info(db_path=local_db_path):
     '''
     prints out all of the columns of every table in db
     c : cursor object
@@ -26,7 +25,7 @@ def db_info(db_path):
                 print('\t' + col)
     db_conn.close()
 
-def df_to_table(df, db_path, table_name, replace_append='replace'):
+def df_to_table(df, table_name, db_path=local_db_path, replace_append='replace'):
     db_conn = sql.connect(db_path)
     try:
         df.columns = [col.upper() for col in df.columns]
@@ -37,7 +36,7 @@ def df_to_table(df, db_path, table_name, replace_append='replace'):
         db_conn.close()
         print('Error - dataframe couldn\'t be added to the database')
 
-def drop_table(db_path, table_name):
+def drop_table(table_name, db_path=local_db_path):
     db_conn = sql.connect(db_path)
     try:
         drop_statement = 'DROP TABLE {}'.format(table_name)
@@ -48,9 +47,10 @@ def drop_table(db_path, table_name):
         db_conn.close()
         return print('Error in dropping the table')
 
-def table_to_df(db_path, table_name):
+def table_to_df(table_name, db_path=local_db_path):
     db_conn = sql.connect(db_path)
     select_statement = 'SELECT * FROM {}'.format(table_name)
     df = pd.read_sql(select_statement, db_conn)
     db_conn.close()
     return df
+

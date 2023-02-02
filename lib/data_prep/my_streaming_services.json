@@ -1,0 +1,16 @@
+[
+    {"streaming_service": "Amazon Prime Video", "tag_value": "primevideo", "provider_abbreviation":"amp"},
+    {"streaming_service": "Netflix",            "tag_value": "netflix",    "provider_abbreviation":"nfx"},
+    {"streaming_service": "BBC iPlayer",        "tag_value": "bbciplayer", "provider_abbreviation":"bbc"},
+    {"streaming_service": "All4",               "tag_value": "4od",        "provider_abbreviation":"al4"},
+    {"streaming_service": "NowTV",              "tag_value": "nowtv",      "provider_abbreviation":"ntc"},
+    {"streaming_service": "Disney+",            "tag_value": "disney+",    "provider_abbreviation":"dnp"},
+    {"streaming_service": "Shudder",            "tag_value": "shudder",    "provider_abbreviation":"asd"},
+    {"streaming_service": "Plex",               "tag_value": "plex",       "provider_abbreviation":"plx"},
+    {"streaming_service": "PlutoTV",            "tag_value": "plutotv",    "provider_abbreviation":"ptv"},
+    {"streaming_service": "My5",                "tag_value": "5od",        "provider_abbreviation":"myf"},
+    {"streaming_service": "Freevee",            "tag_value": "freevee",    "provider_abbreviation":"aim"},
+    {"streaming_service": "Freevee",            "tag_value": "imdbtv",     "provider_abbreviation":""},
+    {"streaming_service": "ITVX",               "tag_value": "itvx",       "provider_abbreviation":"itv"},
+    {"streaming_service": "ITVX",               "tag_value": "itvhub",     "provider_abbreviation":""}
+]
