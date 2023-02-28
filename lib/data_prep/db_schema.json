@@ -43,8 +43,9 @@
 
     "FILM_AVAILABILITY": [
         ["FILM_ID", "TEXT", "PRIMARY KEY"],
-        ["FILM_AVAILABLE", "TEXT", "DEFAULT NO"],
-        ["STREAMING_SERVICE", "TEXT"]
+        ["FILM_AVAILABLE", "TEXT"],
+        ["STREAMING_SERVICE_ABBR", "TEXT"],
+        ["STREAMING_SERVICE_FULL", "TEXT"]
     ],
 
     "FILM_GENRE": [
