@@ -51,4 +51,6 @@ def refresh_core_tables():
     title_df = all_films_df[['FILM_ID', 'NAME', 'FILM_URL_TITLE', 'LETTERBOXD_URI']]
     title_df.columns = ['FILM_ID', 'FILM_TITLE', 'FILM_URL_TITLE', 'LETTERBOXD_URL']
     df_to_table(title_df, 'FILM_TITLE', replace_append='replace')
-    watched_df = exportfile_to_df('watched.csv')
+    film_available_to_stream_df = title_df[['FILM_ID']]
+    film_available_to_stream_df['FILM_AVAILABLE_TO_STREAM'] = 'No'
+    df_to_table(film_available_to_stream_df, 'FILM_AVAILABLE_TO_STREAM', replace_append='replace')
