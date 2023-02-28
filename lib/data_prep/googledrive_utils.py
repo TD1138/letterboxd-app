@@ -28,10 +28,10 @@ def download_file_from_drive(file_id):
         print(F'Download {int(status.progress() * 100)}.')
     return file.getvalue()
 
-def upload_file_to_drive(file_name, file_path):
+def upload_file_to_drive(file_name, local_file_path, google_drive_folder):
     try:
-        file_metadata = {'name': file_name}
-        media = MediaFileUpload(file_path, resumable=True)
+        file_metadata = {'name': file_name, 'parents': [google_drive_folder]}
+        media = MediaFileUpload(local_file_path, resumable=True)
         file = service.files().create(body=file_metadata, media_body=media, fields='id').execute()
         print('Upload of {} sucessful'.format(file_name))
     except:
