@@ -118,8 +118,27 @@ def insert_record_into_table(record, table_name):
 
 def update_record(table_name, column_name, column_value, film_id):
     db_conn = sql.connect(os.getenv('WORKING_DB'))
-    update_statement = 'UPDATE {} SET {} = ? WHERE FILM_ID = ?;'.format(table_name, column_name)
-    update_tuple = (column_value, film_id)
-    db_conn.cursor().execute(update_statement, update_tuple)
-    db_conn.commit()
+    c = db_conn.cursor()
+    try:
+        c.execute('UPDATE {} SET {} = ? WHERE film_id = ?'.format(table_name, column_name), (column_value, film_id))
+        db_conn.commit()
+    except sql.Error as error:
+        print("Error executing update statement:", error)
+    else:
+        print("Update successful")
+    db_conn.close()
+
+    print(get_from_table(table_name, film_id))
+
+def delete_records(table_name, film_id):
+    db_conn = sql.connect(os.getenv('WORKING_DB'))
+    c = db_conn.cursor()
+    try:
+        delete_statement = 'DELETE FROM {} WHERE FILM_ID = "{}"'.format(table_name, film_id)
+        c.execute(delete_statement)
+        db_conn.commit()
+    except sql.Error as error:
+        print("Error executing update statement:", error)
+    else:
+        print("Update successful")
     db_conn.close()

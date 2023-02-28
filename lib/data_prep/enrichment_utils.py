@@ -84,31 +84,23 @@ def get_letterboxd_info(film_id):
     insert_record_into_table(film_year_dict, 'FILM_YEAR')
 
 def get_film_metadata(film_id):
-    watched_df = exportfile_to_df('watched.csv')
-    watched_df['FILM_ID'] = watched_df['LETTERBOXD_URI'].apply(convert_uri_to_id)
-    df_to_table(watched_df[['FILM_ID']], 'WATCHED', replace_append='replace')
-    watchlist_df = exportfile_to_df('watchlist.csv')
-    watchlist_df['FILM_ID'] = watchlist_df['LETTERBOXD_URI'].apply(convert_uri_to_id)
-    watchlist_df.columns = ['ADDED_DATE', 'NAME', 'YEAR', 'LETTERBOXD_URI', 'FILM_ID']
-    df_to_table(watchlist_df[['FILM_ID', 'ADDED_DATE']], 'WATCHLIST', replace_append='replace')
-    all_films_df = pd.concat([watched_df, watchlist_df])
-    all_films_df['FILM_URL_TITLE'] = ''
-    title_df = all_films_df[['FILM_ID', 'NAME', 'FILM_URL_TITLE', 'LETTERBOXD_URI']]
-    title_df.columns = ['FILM_ID', 'FILM_TITLE', 'FILM_URL_TITLE', 'LETTERBOXD_URL']
-    df_to_table(title_df, 'FILM_TITLE', replace_append='replace')
+    # ping the API
     return
 
 def get_streaming_info(film_id):
-    film_url_title = get_from_table('FILM_TITLE', film_id, 'FILM_URL_TITLE')
     with open('my_streaming_services.json', 'r') as schema:
         my_streaming_services = json.load(schema)
     my_streaming_services_abbr = [x for x in set([x['provider_abbreviation'] for x in my_streaming_services]) if len(x) > 0]
+    print(my_streaming_services_abbr)
     just_watch = JustWatch(country='GB')
-    release_year = 1947
-    results = just_watch.search_for_item(query=film_url_title, release_year_from=release_year-1, release_year_until=release_year+1)
-    first_result = results['items'][0]
-    provider_abbreviations = list(set([x['package_short_name'] for x in first_result['offers'] if x['monetization_type'] in ['flatrate', 'free', 'ads']]))
-    valid_abbreviations = [x for x in provider_abbreviations if x in my_streaming_services_abbr]
+    film_url_title = get_from_table('FILM_TITLE', film_id, 'FILM_URL_TITLE')
+    film_release_year = get_from_table('FILM_YEAR', film_id, 'FILM_YEAR')
+    results = just_watch.search_for_item(query=film_url_title, release_year_from=film_release_year-1, release_year_until=film_release_year+1)
+    valid_abbreviations = []
+    if results:
+        first_result = results['items'][0]
+        provider_abbreviations = list(set([x['package_short_name'] for x in first_result['offers'] if x['monetization_type'] in ['flatrate', 'free', 'ads']]))
+        valid_abbreviations = [x for x in provider_abbreviations if x in my_streaming_services_abbr]
     return valid_abbreviations
 
 def ingest_film(film_id):
