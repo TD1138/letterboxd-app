@@ -36,7 +36,7 @@ def get_new_films():
     new_films = [x for x in all_films_latest_export if x not in ingested_film_list]
     return new_films
 
-def get_letterboxd_info(film_id):
+def update_letterboxd_info(film_id):
     letterboxd_url = get_from_table('FILM_TITLE', film_id, 'LETTERBOXD_URL')
     r = requests.get(letterboxd_url)
     redirected_url = r.url
@@ -83,11 +83,11 @@ def get_letterboxd_info(film_id):
     }
     insert_record_into_table(film_year_dict, 'FILM_YEAR')
 
-def get_film_metadata(film_id):
+def update_film_metadata(film_id):
     # ping the API
     return
 
-def get_streaming_info(film_id):
+def update_streaming_info(film_id):
     with open('my_streaming_services.json', 'r') as schema:
         my_streaming_services = json.load(schema)
     my_streaming_services_abbr = [x for x in set([x['provider_abbreviation'] for x in my_streaming_services]) if len(x) > 0]
@@ -104,7 +104,7 @@ def get_streaming_info(film_id):
     return valid_abbreviations
 
 def ingest_film(film_id):
-    get_letterboxd_info(film_id)
-    # get_film_metadata(film_id)
-    # get_streaming_info(film_id)
+    update_letterboxd_info(film_id)
+    # update_film_metadata(film_id)
+    # update_streaming_info(film_id)
     return None
