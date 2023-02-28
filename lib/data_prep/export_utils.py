@@ -51,3 +51,4 @@ def refresh_core_tables():
     title_df = all_films_df[['FILM_ID', 'NAME', 'FILM_URL_TITLE', 'LETTERBOXD_URI']]
     title_df.columns = ['FILM_ID', 'FILM_TITLE', 'FILM_URL_TITLE', 'LETTERBOXD_URL']
     df_to_table(title_df, 'FILM_TITLE', replace_append='replace')
+    watched_df = exportfile_to_df('watched.csv')
