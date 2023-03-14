@@ -41,9 +41,8 @@
         ["FILM_RATING_COUNT", "INTEGER"]
     ],
 
-    "FILM_AVAILABLE_TO_STREAM": [
-        ["FILM_ID", "TEXT", "PRIMARY KEY"],
-        ["FILM_AVAILABLE_TO_STREAM", "TEXT"]
+    "FILMS_AVAILABLE_TO_STREAM": [
+        ["FILM_ID", "TEXT", "PRIMARY KEY"]
     ],
 
     "FILM_STREAMING_SERVICES": [

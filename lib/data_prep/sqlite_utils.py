@@ -110,7 +110,7 @@ def insert_record_into_table(record, table_name):
     if len(missing_from_record) > 0:
         print('There are fields missing from the record so the table cannot be updated ({})'.format(missing_from_record))
         return
-    insert_statement = 'INSERT INTO {}({}) VALUES({})'.format(table_name, ','.join(table_columns), ','.join(['?']*len(table_columns)))
+    insert_statement = 'REPLACE INTO {}({}) VALUES({})'.format(table_name, ','.join(table_columns), ','.join(['?']*len(table_columns)))
     insert_tuple =  tuple([record.get(x) for x in table_columns])
     db_conn.cursor().execute(insert_statement, insert_tuple)
     db_conn.commit()
