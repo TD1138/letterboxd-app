@@ -29,6 +29,21 @@
         ["FILM_RATING_PERCENT", "REAL"]
     ],
 
+    "RATING_SCALING_DETAILS": [
+        ["FILM_RATING_STR", "TEXT", "PRIMARY KEY"],
+        ["FILM_RATING_BASIC", "REAL"],
+        ["RATING_COUNT", "INTEGER"],
+        ["MAX_RATING", "REAL"],
+        ["INCREMENT", "REAL"],
+        ["MAX_POSITION", "INTEGER"],
+        ["MIN_POSITION", "INTEGER"]
+    ],
+
+    "PERSONAL_RANKING": [
+        ["FILM_ID", "TEXT", "PRIMARY KEY"],
+        ["FILM_RANKING", "INTEGER"]
+    ],
+
     "FILM_LETTERBOXD_STATS": [
         ["FILM_ID", "TEXT", "PRIMARY KEY"],
         ["FILM_WATCH_COUNT", "INTEGER"],
@@ -53,7 +68,8 @@
 
     "FILM_GENRE": [
         ["FILM_ID", "TEXT", "PRIMARY KEY"],
-        ["FILM_GENRE", "TEXT", "NOT NULL"]
+        ["FILM_GENRE", "TEXT", "NOT NULL"],
+        ["ALL_FILM_GENRES", "TEXT", "NOT NULL"]
     ],
 
     "DIARY": [
@@ -61,12 +77,15 @@
         ["DIARY_DATE", "TEXT"],
         ["FILM_RATING", "REAL"],
         ["TAGS", "TEXT"],
-        ["FIRST_TIME_WATCH", "INTEGER", "DEFAULT 0"]
+        ["FIRST_TIME_WATCH", "INTEGER", "DEFAULT 0"],
+        ["IS_NARRATIVE_FEATURE", "INTEGER", "DEFAULT 0"]
     ],
 
     "INGESTED": [
         ["FILM_ID", "TEXT", "PRIMARY KEY"],
-        ["INGESTION_DATE", "TEXT", "NOT NULL"]
+        ["INGESTION_DATE", "DATETIME", "NOT NULL"],
+        ["INGESTION_ERRORS", "INTEGER"]
+
     ]
 
 }

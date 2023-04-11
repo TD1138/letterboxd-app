@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import os
 import shutil
@@ -33,21 +34,83 @@ def set_latest_export():
     latest_export_file_loc = letterboxd_exports_folder + '/' + latest_export_filename
     dotenv.set_key(dotenv.find_dotenv(), 'LATEST_EXPORT', latest_export_file_loc)
 
-def exportfile_to_df(export_filename):
-    export_df = pd.read_csv(os.path.join(os.getenv('LATEST_EXPORT'), export_filename))
+def exportfile_to_df(export_filename, skiprows=None):
+    export_df = pd.read_csv(os.path.join(os.getenv('LATEST_EXPORT'), export_filename), skiprows=skiprows)
     export_df.columns = [x.upper().replace(' ', '_') for x in export_df.columns]
     return export_df
+
+def create_ratings_dict(feature_diary_df):
+    ratings_dict = {}
+    for rating in sorted(feature_diary_df['FILM_RATING'].unique(), reverse=True):
+        if not np.isnan(rating):
+            tmp_df = feature_diary_df[feature_diary_df['FILM_RATING']==rating]
+            rating_count = len(tmp_df['FILM_NAME'].unique())
+            increment = 0.5/rating_count
+            max_rating = rating + 0.25
+            if rating == 5:
+                increment = 0.25/rating_count
+                max_rating = 5
+            elif rating == 0.5:
+                increment = 0.75/rating_count
+            highest_position = tmp_df['FILM_POSITION'].min()
+            lowest_position = tmp_df['FILM_POSITION'].max()
+            ratings_dict[rating] = {'RATING_COUNT':rating_count, 'MAX_RATING':max_rating, 'INCREMENT':increment, 'MAX_POSITION':highest_position, 'MIN_POSITION':lowest_position}
+    return ratings_dict
+
+def scale_rating(basic_rating, position, ratings_dict):
+    if np.isnan(basic_rating):
+        return np.nan
+    else:
+        dict_entry = ratings_dict[basic_rating]
+        relative_position = position - dict_entry['MAX_POSITION']
+        required_increment = relative_position*dict_entry['INCREMENT']
+        final_rating = dict_entry['MAX_RATING'] - required_increment
+        return final_rating
 
 def refresh_core_tables():
     watched_df = exportfile_to_df('watched.csv')
     watched_df['FILM_ID'] = watched_df['LETTERBOXD_URI'].apply(convert_uri_to_id)
     df_to_table(watched_df[['FILM_ID']], 'WATCHED', replace_append='replace')
+
     watchlist_df = exportfile_to_df('watchlist.csv')
     watchlist_df['FILM_ID'] = watchlist_df['LETTERBOXD_URI'].apply(convert_uri_to_id)
     watchlist_df.columns = ['ADDED_DATE', 'NAME', 'YEAR', 'LETTERBOXD_URI', 'FILM_ID']
     df_to_table(watchlist_df[['FILM_ID', 'ADDED_DATE']], 'WATCHLIST', replace_append='replace')
+
     all_films_df = pd.concat([watched_df, watchlist_df])
     all_films_df['FILM_URL_TITLE'] = ''
     title_df = all_films_df[['FILM_ID', 'NAME', 'FILM_URL_TITLE', 'LETTERBOXD_URI']]
     title_df.columns = ['FILM_ID', 'FILM_TITLE', 'FILM_URL_TITLE', 'LETTERBOXD_URL']
     df_to_table(title_df, 'FILM_TITLE', replace_append='replace')
+
+    ranking_list = exportfile_to_df('lists/every-film-ranked.csv', skiprows=3)
+    ranking_list['FILM_ID'] = ranking_list['URL'].apply(convert_uri_to_id)
+    ranking_list.columns = ['FILM_POSITION', 'FILM_NAME', 'FILM_YEAR', 'LETTERBOXD_URI', 'DESCRIPTION', 'FILM_ID']
+    ranking_list['FILM_POSITION'] = ranking_list['FILM_POSITION'].astype('Int64')
+    df_to_table(ranking_list[['FILM_ID', 'FILM_POSITION']], 'PERSONAL_RANKING', replace_append='replace')
+
+    diary_df = exportfile_to_df('diary.csv')
+    diary_df.columns = ['DIARY_DATE', 'FILM_NAME', 'FILM_YEAR', 'DIARY_URI', 'FILM_RATING', 'REWATCH', 'TAGS', 'WATCH_DATE']
+    diary_df = diary_df.merge(watched_df, how='left', left_on=['FILM_NAME', 'FILM_YEAR'], right_on=['NAME', 'YEAR'])
+    diary_df['FIRST_TIME_WATCH'] = np.where(diary_df['REWATCH']=='Yes', 0, 1)
+    diary_df['TAGS'] = diary_df['TAGS'].fillna('')
+    diary_df = diary_df.merge(ranking_list[['FILM_ID', 'FILM_POSITION']], how='left', on='FILM_ID')
+    diary_df['IS_NARRATIVE_FEATURE'] = np.where(diary_df['FILM_POSITION'].isnull(), 0, 1)
+    df_to_table(diary_df[['FILM_ID', 'WATCH_DATE', 'FILM_RATING', 'TAGS', 'FIRST_TIME_WATCH', 'IS_NARRATIVE_FEATURE']], 'DIARY', replace_append='replace')
+
+    feature_diary_df = diary_df[diary_df['IS_NARRATIVE_FEATURE']==1].reset_index(drop=True)
+    ratings_dict = create_ratings_dict(feature_diary_df)
+    rating_scaling_df = pd.DataFrame(ratings_dict).T.reset_index()
+    rating_scaling_df.columns = ['FILM_RATING_BASIC', 'RATING_COUNT', 'MAX_RATING', 'INCREMENT', 'MAX_POSITION', 'MIN_POSITION']
+    rating_scaling_df.insert(0, 'FILM_RATING_STR', rating_scaling_df['FILM_RATING_BASIC'].astype(str) + ' stars')
+    df_to_table(rating_scaling_df, 'RATING_SCALING_DETAILS', replace_append='replace')
+
+    feature_diary_df['RATING_ADJUSTED'] = feature_diary_df.apply(lambda row: scale_rating(row['FILM_RATING'], row['FILM_POSITION'], ratings_dict), axis=1)
+    feature_diary_df['RATING_PERCENT'] = feature_diary_df['RATING_ADJUSTED'] / 5.0
+    film_ratings_df = feature_diary_df.groupby('FILM_ID').agg({'FILM_RATING':'mean', 'RATING_ADJUSTED':'mean', 'RATING_PERCENT':'mean'}).reset_index()
+    film_ratings_df.columns = ['FILM_ID', 'FILM_RATING_BASIC', 'FILM_RATING_SCALED', 'FILM_RATING_PERCENT']
+    df_to_table(film_ratings_df, 'PERSONAL_RATING', replace_append='replace')
+
+
+
+

@@ -4,7 +4,8 @@ import re
 import pandas as pd
 from bs4 import BeautifulSoup
 import requests
-import datetime as datetime
+from datetime import datetime
+from random import sample
 import time
 from sqlite_utils import table_to_df, get_from_table, insert_record_into_table, update_record, df_to_table
 from export_utils import exportfile_to_df, convert_uri_to_id
@@ -17,7 +18,8 @@ load_dotenv()
 def get_ingested_films():
     try:
         ingested_df = table_to_df('INGESTED')
-        ingested_film_list = ingested_df['FILM_ID'].values
+        success_ingested_df = ingested_df[ingested_df['INGESTION_ERRORS'] == 0]
+        ingested_film_list = success_ingested_df['FILM_ID'].values
     except:
         ingested_film_list = []
     return ingested_film_list
@@ -34,6 +36,7 @@ def get_new_films():
     ingested_film_list = get_ingested_films()
     all_films_latest_export = read_all_films()
     new_films = [x for x in all_films_latest_export if x not in ingested_film_list]
+    new_films = sample(new_films, len(new_films))
     return new_films
 
 def update_letterboxd_info(film_id):
@@ -46,6 +49,7 @@ def update_letterboxd_info(film_id):
     og_url = soup.find('meta', {'property': 'og:url'}).get('content')
     film = og_url.split('/')[-2]
     year = int(list(re.search(r'\((.*?)\)', soup.find('meta', {'property': 'og:title'}).get('content')).groups())[0])
+    genre_list = [x.get('href').replace('/films/genre/', '').replace('/', '') for x in soup.findAll('a', {'class':'text-slug'}) if 'genre' in str(x.get('href'))]
     rating_dict = json.loads(soup.find('script', {'type':"application/ld+json"}).string.split('\n')[2]).get('aggregateRating')
     rating_mean = rating_dict.get('ratingValue')
     rating_count = rating_dict.get('ratingCount')
@@ -82,6 +86,12 @@ def update_letterboxd_info(film_id):
         'FILM_DECADE': str(year)[:3]+'0s'
     }
     insert_record_into_table(film_year_dict, 'FILM_YEAR')
+    film_genre_dict = {
+        'FILM_ID': film_id,
+        'FILM_GENRE':genre_list[0],
+        'ALL_FILM_GENRES': '/'.join(genre_list)
+    }
+    insert_record_into_table(film_genre_dict, 'FILM_GENRE')
 
 def update_film_metadata(film_id):
     # ping the API
@@ -109,7 +119,20 @@ def update_streaming_info(film_id):
         df_to_table(film_streaming_services_df, 'FILM_STREAMING_SERVICES', replace_append='append', verbose=True)
 
 def ingest_film(film_id):
-    update_letterboxd_info(film_id)
-    # update_film_metadata(film_id)
-    # update_streaming_info(film_id)
-    return None
+    error_count = 0
+    try:
+        update_letterboxd_info(film_id)
+    except:
+        error_count += 1
+        print('Update of Letterboxd info for {} failed'.format(film_id))
+    # try:
+    #     update_film_metadata(film_id)
+    # except:
+        # error_count += 1
+        # print('Update of film metadata info for {} failed'.format(film_id))
+    try:
+        update_streaming_info(film_id)
+    except:
+        error_count += 1
+        print('Update of streaming info for {} failed'.format(film_id))
+    insert_record_into_table({'FILM_ID': film_id, 'INGESTION_DATE':datetime.now(), 'INGESTION_ERRORS':error_count}, 'INGESTED')

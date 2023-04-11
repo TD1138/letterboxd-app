@@ -29,14 +29,17 @@ def db_info(db_path=None):
         print('This database has no tables yet!')
 
 def db_exists(db_path):
-    db_conn = sql.connect(db_path)
-    tables = db_conn.cursor().execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()
-    table_count = len(tables)
-    db_conn.close()
-    if table_count == 0:
+    try:
+        db_conn = sql.connect(db_path)
+        tables = db_conn.cursor().execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()
+        table_count = len(tables)
+        db_conn.close()
+        if table_count == 0:
+            return False
+        else:
+            return True
+    except:
         return False
-    else:
-        return True
 
 def df_to_table(df, table_name, replace_append='replace', verbose=False):
     db_conn = sql.connect(os.getenv('WORKING_DB'))
@@ -127,8 +130,6 @@ def update_record(table_name, column_name, column_value, film_id):
     else:
         print("Update successful")
     db_conn.close()
-
-    print(get_from_table(table_name, film_id))
 
 def delete_records(table_name, film_id):
     db_conn = sql.connect(os.getenv('WORKING_DB'))
