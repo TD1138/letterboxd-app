@@ -8,7 +8,7 @@ import requests
 from datetime import datetime
 from random import sample
 import time
-from sqlite_utils import table_to_df, get_from_table, insert_record_into_table, update_record, df_to_table
+from sqlite_utils import table_to_df, get_from_table, insert_record_into_table, update_record, df_to_table, delete_records
 from export_utils import exportfile_to_df, convert_uri_to_id
 from selenium_utils import return_logged_in_page_source
 from justwatch import JustWatch
@@ -124,6 +124,8 @@ def update_streaming_info(film_id):
     film_release_year = get_from_table('FILM_YEAR', film_id, 'FILM_YEAR')
     results = just_watch.search_for_item(query=film_url_title, release_year_from=film_release_year-1, release_year_until=film_release_year+1)
     first_result = results['items'][0]
+    delete_records('FILMS_AVAILABLE_TO_STREAM', film_id)
+    delete_records('FILM_STREAMING_SERVICES', film_id)
     if first_result.get('title') == get_from_table('FILM_TITLE', film_id, 'FILM_TITLE'):
         provider_abbreviations = list(set([x['package_short_name'] for x in first_result['offers'] if x['monetization_type'] in ['flatrate', 'free', 'ads']]))
         valid_abbr = [x for x in provider_abbreviations if x in my_streaming_services_abbr]
