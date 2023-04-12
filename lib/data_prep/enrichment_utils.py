@@ -54,12 +54,16 @@ def update_letterboxd_info(film_id):
     rating_mean = rating_dict.get('ratingValue')
     rating_count = rating_dict.get('ratingCount')
     r = requests.get('https://letterboxd.com/film/{}/members/rated/.5-5/'.format(film))
+    # import ipdb; ipdb.set_trace()
     soup = BeautifulSoup(r.content, 'lxml')
     metrics_dict = {}
     for i in ['members', 'fans', 'likes', 'reviews', 'lists']:
         href_str = '/film/{}/{}/'.format(film, i)
-        metric_string = soup.find('a', {'class': 'tooltip', 'href':href_str}).get('title')
-        metric = int(metric_string[:metric_string.find('\xa0')].replace(',', ''))
+        try:
+            metric_string = soup.find('a', {'class': 'tooltip', 'href':href_str}).get('title')
+            metric = int(metric_string[:metric_string.find('\xa0')].replace(',', ''))
+        except:
+            metric = 0
         metrics_dict[i] = metric
     r = requests.get('https://letterboxd.com/esi/film/{}/stats/'.format(film))
     soup = BeautifulSoup(r.content, 'lxml')
