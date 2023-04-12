@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import numpy as np
 import pandas as pd
 from bs4 import BeautifulSoup
 import requests
@@ -51,8 +52,14 @@ def update_letterboxd_info(film_id):
     year = int(list(re.search(r'\((.*?)\)', soup.find('meta', {'property': 'og:title'}).get('content')).groups())[0])
     genre_list = [x.get('href').replace('/films/genre/', '').replace('/', '') for x in soup.findAll('a', {'class':'text-slug'}) if 'genre' in str(x.get('href'))]
     rating_dict = json.loads(soup.find('script', {'type':"application/ld+json"}).string.split('\n')[2]).get('aggregateRating')
-    rating_mean = rating_dict.get('ratingValue')
-    rating_count = rating_dict.get('ratingCount')
+    try:
+        rating_mean = rating_dict.get('ratingValue')
+    except:
+        rating_mean = np.nan
+    try:
+        rating_count = rating_dict.get('ratingCount')
+    except:
+        rating_count = np.nan
     r = requests.get('https://letterboxd.com/film/{}/members/rated/.5-5/'.format(film))
     # import ipdb; ipdb.set_trace()
     soup = BeautifulSoup(r.content, 'lxml')
