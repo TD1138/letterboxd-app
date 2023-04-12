@@ -16,11 +16,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-def get_ingested_films():
+def get_ingested_films(error_count=0):
     try:
         ingested_df = table_to_df('INGESTED')
-        success_ingested_df = ingested_df[ingested_df['INGESTION_ERRORS'] == 0]
+        success_ingested_df = ingested_df[ingested_df['INGESTION_ERRORS'] == error_count]
         ingested_film_list = success_ingested_df['FILM_ID'].values
+        ingested_film_list = sample(list(ingested_film_list), len(ingested_film_list))
     except:
         ingested_film_list = []
     return ingested_film_list
@@ -49,7 +50,10 @@ def update_letterboxd_info(film_id):
     soup = BeautifulSoup(r.content, 'lxml')
     og_url = soup.find('meta', {'property': 'og:url'}).get('content')
     film = og_url.split('/')[-2]
-    year = int(list(re.search(r'\((.*?)\)', soup.find('meta', {'property': 'og:title'}).get('content')).groups())[0])
+    try:
+        year = int(list(re.search(r'\((.*?)\)', soup.find('meta', {'property': 'og:title'}).get('content')).groups())[0])
+    except:
+        year = int(datetime.now().strftime('%Y')) + 2
     genre_list = [x.get('href').replace('/films/genre/', '').replace('/', '') for x in soup.findAll('a', {'class':'text-slug'}) if 'genre' in str(x.get('href'))]
     rating_dict = json.loads(soup.find('script', {'type':"application/ld+json"}).string.split('\n')[2]).get('aggregateRating')
     try:
