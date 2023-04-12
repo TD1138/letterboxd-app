@@ -124,16 +124,17 @@ def update_streaming_info(film_id):
     film_release_year = get_from_table('FILM_YEAR', film_id, 'FILM_YEAR')
     results = just_watch.search_for_item(query=film_url_title, release_year_from=film_release_year-1, release_year_until=film_release_year+1)
     first_result = results['items'][0]
-    provider_abbreviations = list(set([x['package_short_name'] for x in first_result['offers'] if x['monetization_type'] in ['flatrate', 'free', 'ads']]))
-    valid_abbr = [x for x in provider_abbreviations if x in my_streaming_services_abbr]
-    if len(valid_abbr) > 0:
-        insert_record_into_table({'FILM_ID':film_id}, 'FILMS_AVAILABLE_TO_STREAM')
-        valid_full = [abbr_to_full_dict.get(x) for x in valid_abbr]
-        film_streaming_services_df = pd.DataFrame(index=range(len(valid_abbr)))
-        film_streaming_services_df['FILM_ID'] = film_id
-        film_streaming_services_df['STREAMING_SERVICE_ABBR'] = valid_abbr
-        film_streaming_services_df['STREAMING_SERVICE_FULL'] = valid_full
-        df_to_table(film_streaming_services_df, 'FILM_STREAMING_SERVICES', replace_append='append', verbose=True)
+    if first_result.get('title') == get_from_table('FILM_TITLE', film_id, 'FILM_TITLE'):
+        provider_abbreviations = list(set([x['package_short_name'] for x in first_result['offers'] if x['monetization_type'] in ['flatrate', 'free', 'ads']]))
+        valid_abbr = [x for x in provider_abbreviations if x in my_streaming_services_abbr]
+        if len(valid_abbr) > 0:
+            insert_record_into_table({'FILM_ID':film_id}, 'FILMS_AVAILABLE_TO_STREAM')
+            valid_full = [abbr_to_full_dict.get(x) for x in valid_abbr]
+            film_streaming_services_df = pd.DataFrame(index=range(len(valid_abbr)))
+            film_streaming_services_df['FILM_ID'] = film_id
+            film_streaming_services_df['STREAMING_SERVICE_ABBR'] = valid_abbr
+            film_streaming_services_df['STREAMING_SERVICE_FULL'] = valid_full
+            df_to_table(film_streaming_services_df, 'FILM_STREAMING_SERVICES', replace_append='append', verbose=True)
 
 def ingest_film(film_id):
     error_count = 0
