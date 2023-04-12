@@ -28,6 +28,23 @@ def db_info(db_path=None):
     else:
         print('This database has no tables yet!')
 
+def get_list_of_tables():
+    db_conn = sql.connect(os.getenv('WORKING_DB'))
+    tables = db_conn.cursor().execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()
+    db_conn.close()
+    tables = [table[0] for table in tables]
+    return tables
+
+def print_table_head(table_name, head=10):
+    db_conn = sql.connect(os.getenv('WORKING_DB'))
+    print(pd.read_sql_query("SELECT * from {} LIMIT {}".format(table_name, head), db_conn))
+    db_conn.close()
+
+def db_table_samples(head=10):
+    for t in get_list_of_tables():
+        print(t, ':')
+        print_table_head(t, head=head)
+
 def db_exists(db_path):
     try:
         db_conn = sql.connect(db_path)
@@ -143,3 +160,9 @@ def delete_records(table_name, film_id):
     else:
         print("Update successful")
     db_conn.close()
+
+def query_from_string(select_statement):
+    db_conn = sql.connect(os.getenv('WORKING_DB'))
+    df = pd.read_sql(select_statement, db_conn)
+    db_conn.close()
+    return df
