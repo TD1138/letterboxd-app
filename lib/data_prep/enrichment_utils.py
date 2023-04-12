@@ -55,6 +55,8 @@ def update_letterboxd_info(film_id):
     except:
         year = int(datetime.now().strftime('%Y')) + 2
     genre_list = [x.get('href').replace('/films/genre/', '').replace('/', '') for x in soup.findAll('a', {'class':'text-slug'}) if 'genre' in str(x.get('href'))]
+    if not genre_list:
+        genre_list = ['none']
     rating_dict = json.loads(soup.find('script', {'type':"application/ld+json"}).string.split('\n')[2]).get('aggregateRating')
     try:
         rating_mean = rating_dict.get('ratingValue')
