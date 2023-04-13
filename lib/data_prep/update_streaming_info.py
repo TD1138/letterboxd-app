@@ -5,6 +5,7 @@ from sqlite_utils import get_from_table
 films_to_ingest = get_ingested_films(error_type='STREAMING_ERROR')
 # films_to_ingest = ['f_01ZLI'] # OVERRIDE TO DEBUG SPECIFIC FILMS
 ingestion_limit = len(films_to_ingest)
+ingestion_limit = 10
 print('In total, there are {} films left to; update streaming for'.format(len(films_to_ingest)))
 for film_id in tqdm(films_to_ingest[:ingestion_limit]):
     film_title = get_from_table('FILM_TITLE', film_id, 'FILM_TITLE')
