@@ -144,8 +144,6 @@ def update_record(table_name, column_name, column_value, film_id):
         db_conn.commit()
     except sql.Error as error:
         print("Error executing update statement:", error)
-    else:
-        print("Update successful")
     db_conn.close()
 
 def delete_records(table_name, film_id):
@@ -157,8 +155,6 @@ def delete_records(table_name, film_id):
         db_conn.commit()
     except sql.Error as error:
         print("Error executing update statement:", error)
-    else:
-        print("Update successful")
     db_conn.close()
 
 def query_from_string(select_statement):

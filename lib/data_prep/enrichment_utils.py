@@ -24,11 +24,16 @@ def get_all_films():
     all_film_ids = watched_film_ids + watchlist_film_ids
     return all_film_ids
 
-def get_ingested_films(error_count=0):
+def get_ingested_films(error_type=None):
+    valid_error_types = ['LETTERBOXD_ERROR', 'METADATA_ERROR', 'STREAMING_ERROR', 'TOTAL_INGESTION_ERRORS']
     try:
         ingested_df = table_to_df('INGESTED')
-        success_ingested_df = ingested_df[ingested_df['INGESTION_ERRORS'] == error_count]
-        ingested_film_ids = success_ingested_df['FILM_ID'].values
+        if error_type:
+            if error_type in valid_error_types:
+                ingested_df = ingested_df[ingested_df[error_type] > 0]
+            else:
+                return print('error_type parameter, if passed, must be one of {}'.format(', '.join(valid_error_types)))
+        ingested_film_ids = ingested_df['FILM_ID'].values
         ingested_film_ids = sample(list(ingested_film_ids), len(ingested_film_ids))
     except:
         ingested_film_ids = []
@@ -127,7 +132,7 @@ def update_streaming_info(film_id):
     delete_records('FILMS_AVAILABLE_TO_STREAM', film_id)
     delete_records('FILM_STREAMING_SERVICES', film_id)
     if first_result.get('title') == get_from_table('FILM_TITLE', film_id, 'FILM_TITLE'):
-        provider_abbreviations = list(set([x['package_short_name'] for x in first_result['offers'] if x['monetization_type'] in ['flatrate', 'free', 'ads']]))
+        provider_abbreviations = list(set([x['package_short_name'] for x in first_result.get('offers', []) if x['monetization_type'] in ['flatrate', 'free', 'ads']]))
         valid_abbr = [x for x in provider_abbreviations if x in my_streaming_services_abbr]
         if len(valid_abbr) > 0:
             insert_record_into_table({'FILM_ID':film_id}, 'FILMS_AVAILABLE_TO_STREAM')
@@ -141,10 +146,10 @@ def update_streaming_info(film_id):
 def ingest_film(film_id):
     ingestion_record = {
         'FILM_ID': film_id,
-        'INGESTION_DATE':datetime.now(),
+        'INGESTION_DATETIME':datetime.now(),
         'LETTERBOXD_ERROR':0,
         'METADATA_ERROR':0,
-        'STREAING_ERROR':0,
+        'STREAMING_ERROR':0,
         'TOTAL_INGESTION_ERRORS': 0
                   }
     try:
@@ -163,6 +168,7 @@ def ingest_film(film_id):
         update_streaming_info(film_id)
     except:
         ingestion_record['TOTAL_INGESTION_ERRORS'] += 1
-        ingestion_record['STREAING_ERROR'] = 1
+        ingestion_record['STREAMING_ERROR'] = 1
         print('Update of streaming info for {} failed'.format(film_id))
+    delete_records('INGESTED', film_id)
     insert_record_into_table(ingestion_record, 'INGESTED')

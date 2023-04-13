@@ -83,7 +83,7 @@
 
     "INGESTED": [
         ["FILM_ID", "TEXT", "PRIMARY KEY"],
-        ["INGESTION_DATE", "DATETIME", "NOT NULL"],
+        ["INGESTION_DATETIME", "DATETIME", "NOT NULL"],
         ["LETTERBOXD_ERROR", "INTEGER"],
         ["METADATA_ERROR", "INTEGER"],
         ["STREAMING_ERROR", "INTEGER"],
