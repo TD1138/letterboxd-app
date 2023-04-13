@@ -16,17 +16,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-def get_ingested_films(error_count=0):
-    try:
-        ingested_df = table_to_df('INGESTED')
-        success_ingested_df = ingested_df[ingested_df['INGESTION_ERRORS'] == error_count]
-        ingested_film_list = success_ingested_df['FILM_ID'].values
-        ingested_film_list = sample(list(ingested_film_list), len(ingested_film_list))
-    except:
-        ingested_film_list = []
-    return ingested_film_list
-
-def read_all_films():
+def get_all_films():
     watched_df = exportfile_to_df('watched.csv')
     watched_film_ids = [convert_uri_to_id(x) for x in watched_df['LETTERBOXD_URI'].values]
     watchlist_df = exportfile_to_df('watchlist.csv')
@@ -34,12 +24,22 @@ def read_all_films():
     all_film_ids = watched_film_ids + watchlist_film_ids
     return all_film_ids
 
+def get_ingested_films(error_count=0):
+    try:
+        ingested_df = table_to_df('INGESTED')
+        success_ingested_df = ingested_df[ingested_df['INGESTION_ERRORS'] == error_count]
+        ingested_film_ids = success_ingested_df['FILM_ID'].values
+        ingested_film_ids = sample(list(ingested_film_ids), len(ingested_film_ids))
+    except:
+        ingested_film_ids = []
+    return ingested_film_ids
+
 def get_new_films():
-    ingested_film_list = get_ingested_films()
-    all_films_latest_export = read_all_films()
-    new_films = [x for x in all_films_latest_export if x not in ingested_film_list]
-    new_films = sample(new_films, len(new_films))
-    return new_films
+    ingested_film_ids = get_ingested_films()
+    all_film_ids = get_all_films()
+    new_film_ids = [x for x in all_film_ids if x not in ingested_film_ids]
+    new_film_ids = sample(new_film_ids, len(new_film_ids))
+    return new_film_ids
 
 def update_letterboxd_info(film_id):
     letterboxd_url = get_from_table('FILM_TITLE', film_id, 'LETTERBOXD_URL')
@@ -139,20 +139,30 @@ def update_streaming_info(film_id):
             df_to_table(film_streaming_services_df, 'FILM_STREAMING_SERVICES', replace_append='append', verbose=True)
 
 def ingest_film(film_id):
-    error_count = 0
+    ingestion_record = {
+        'FILM_ID': film_id,
+        'INGESTION_DATE':datetime.now(),
+        'LETTERBOXD_ERROR':0,
+        'METADATA_ERROR':0,
+        'STREAING_ERROR':0,
+        'TOTAL_INGESTION_ERRORS': 0
+                  }
     try:
         update_letterboxd_info(film_id)
     except:
-        error_count += 1
+        ingestion_record['TOTAL_INGESTION_ERRORS'] += 1
+        ingestion_record['LETTERBOXD_ERROR'] = 1
         print('Update of Letterboxd info for {} failed'.format(film_id))
     # try:
     #     update_film_metadata(film_id)
     # except:
-        # error_count += 1
+        # ingestion_record['TOTAL_INGESTION_ERRORS'] += 1
+        # ingestion_record['METADATA_ERROR'] = 1
         # print('Update of film metadata info for {} failed'.format(film_id))
     try:
         update_streaming_info(film_id)
     except:
-        error_count += 1
+        ingestion_record['TOTAL_INGESTION_ERRORS'] += 1
+        ingestion_record['STREAING_ERROR'] = 1
         print('Update of streaming info for {} failed'.format(film_id))
-    insert_record_into_table({'FILM_ID': film_id, 'INGESTION_DATE':datetime.now(), 'INGESTION_ERRORS':error_count}, 'INGESTED')
+    insert_record_into_table(ingestion_record, 'INGESTED')
