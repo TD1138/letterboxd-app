@@ -130,7 +130,7 @@ def update_streaming_info(film_id):
     results = just_watch.search_for_item(query=film_url_title, release_year_from=film_release_year-1, release_year_until=film_release_year+1)
     delete_records('FILMS_AVAILABLE_TO_STREAM', film_id)
     delete_records('FILM_STREAMING_SERVICES', film_id)
-    if len(results) > 0:
+    if len(results['items']) > 0:
         first_result = results['items'][0]
         if first_result.get('title') == get_from_table('FILM_TITLE', film_id, 'FILM_TITLE'):
             provider_abbreviations = list(set([x['package_short_name'] for x in first_result.get('offers', []) if x['monetization_type'] in ['flatrate', 'free', 'ads']]))

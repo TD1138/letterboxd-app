@@ -3,7 +3,7 @@ from enrichment_utils import get_ingested_films, get_new_films, update_streaming
 from sqlite_utils import get_from_table
 
 films_to_ingest = get_ingested_films(error_type='STREAMING_ERROR')
-# films_to_ingest = ['f_01ZLI'] # OVERRIDE TO DEBUG SPECIFIC FILMS
+films_to_ingest = ['f_01V9U'] # OVERRIDE TO DEBUG SPECIFIC FILMS
 ingestion_limit = len(films_to_ingest)
 ingestion_limit = 10
 print('In total, there are {} films left to; update streaming for'.format(len(films_to_ingest)))
