@@ -8,7 +8,8 @@ import requests
 from datetime import datetime
 from random import sample
 import time
-from sqlite_utils import table_to_df, get_from_table, insert_record_into_table, update_record, df_to_table, delete_records
+from tqdm import tqdm
+from sqlite_utils import table_to_df, get_from_table, insert_record_into_table, update_record, df_to_table, delete_records, select_statement_to_df
 from export_utils import exportfile_to_df, convert_uri_to_id
 from selenium_utils import return_logged_in_page_source
 from justwatch import JustWatch
@@ -24,7 +25,7 @@ def get_all_films():
     all_film_ids = watched_film_ids + watchlist_film_ids
     return all_film_ids
 
-def get_ingested_films(error_type=None):
+def get_ingested_films(error_type=None, shuffle=True):
     valid_error_types = ['LETTERBOXD_ERROR', 'METADATA_ERROR', 'STREAMING_ERROR', 'TOTAL_INGESTION_ERRORS']
     try:
         ingested_df = table_to_df('INGESTED')
@@ -34,7 +35,7 @@ def get_ingested_films(error_type=None):
             else:
                 return print('error_type parameter, if passed, must be one of {}'.format(', '.join(valid_error_types)))
         ingested_film_ids = ingested_df['FILM_ID'].values
-        ingested_film_ids = sample(list(ingested_film_ids), len(ingested_film_ids))
+        if shuffle: ingested_film_ids = sample(list(ingested_film_ids), len(ingested_film_ids))
     except:
         ingested_film_ids = []
     return ingested_film_ids
@@ -46,7 +47,32 @@ def get_new_films():
     new_film_ids = sample(new_film_ids, len(new_film_ids))
     return new_film_ids
 
-def update_letterboxd_info(film_id):
+def get_film_ids_from_select_statement(select_statement):
+    sql_df = select_statement_to_df(select_statement)
+    try:
+        sql_film_ids = sql_df['FILM_ID'].values
+        return sql_film_ids
+    except:
+        print('select statement must output "FILM_ID" column')
+
+def get_tmdb_id(film_id):
+    letterboxd_url = get_from_table('FILM_TITLE', film_id, 'LETTERBOXD_URL')
+    r = requests.get(letterboxd_url)
+    if r.status_code != 200:
+        return
+    redirected_url = r.url
+    if letterboxd_url != redirected_url:
+        r = requests.get(redirected_url)
+    soup = BeautifulSoup(r.content, 'lxml')
+    tmdb_url = soup.find('a', {'data-track-action': 'TMDb'}).get('href')
+    tmdb_id = tmdb_url.replace('https://www.themoviedb.org/movie/', '').replace('/', '')
+    tmdb_dict = {
+        'FILM_ID': film_id,
+        'TMDB_ID':tmdb_id
+    }
+    insert_record_into_table(tmdb_dict, 'TMDB_ID')
+
+def get_metadata_from_letterboxd(film_id):
     letterboxd_url = get_from_table('FILM_TITLE', film_id, 'LETTERBOXD_URL')
     r = requests.get(letterboxd_url)
     redirected_url = r.url
@@ -55,13 +81,44 @@ def update_letterboxd_info(film_id):
     soup = BeautifulSoup(r.content, 'lxml')
     og_url = soup.find('meta', {'property': 'og:url'}).get('content')
     film = og_url.split('/')[-2]
+    update_record("FILM_TITLE", "FILM_URL_TITLE", film, film_id)
     try:
         year = int(list(re.search(r'\((.*?)\)', soup.find('meta', {'property': 'og:title'}).get('content')).groups())[0])
     except:
         year = int(datetime.now().strftime('%Y')) + 2
+    film_year_dict = {
+        'FILM_ID': film_id,
+        'FILM_YEAR':year,
+        'FILM_DECADE': str(year)[:3]+'0s'
+    }
+    insert_record_into_table(film_year_dict, 'FILM_YEAR')
     genre_list = [x.get('href').replace('/films/genre/', '').replace('/', '') for x in soup.findAll('a', {'class':'text-slug'}) if 'genre' in str(x.get('href'))]
     if not genre_list:
         genre_list = ['none']
+    film_genre_dict = {
+        'FILM_ID': film_id,
+        'FILM_GENRE':genre_list[0],
+        'ALL_FILM_GENRES': '/'.join(genre_list)
+    }
+    insert_record_into_table(film_genre_dict, 'FILM_GENRE')
+
+def get_letterboxd_top250_status(film_id):
+    film_url_title = get_from_table('FILM_TITLE', film_id, 'FILM_URL_TITLE')
+    r = requests.get('https://letterboxd.com/esi/film/{}/stats/'.format(film_url_title))
+    soup = BeautifulSoup(r.content, 'lxml')
+    try:
+        top_250_status = int(soup.find('a', {'class': 'has-icon icon-top250 icon-16 tooltip'}).text)
+    except:
+        top_250_status = None
+    return top_250_status
+
+def get_letterboxd_rating(film_id):
+    letterboxd_url = get_from_table('FILM_TITLE', film_id, 'LETTERBOXD_URL')
+    r = requests.get(letterboxd_url)
+    redirected_url = r.url
+    if letterboxd_url != redirected_url:
+        r = requests.get(redirected_url)
+    soup = BeautifulSoup(r.content, 'lxml')
     rating_dict = json.loads(soup.find('script', {'type':"application/ld+json"}).string.split('\n')[2]).get('aggregateRating')
     try:
         rating_mean = rating_dict.get('ratingValue')
@@ -71,24 +128,26 @@ def update_letterboxd_info(film_id):
         rating_count = rating_dict.get('ratingCount')
     except:
         rating_count = np.nan
-    r = requests.get('https://letterboxd.com/film/{}/members/rated/.5-5/'.format(film))
-    # import ipdb; ipdb.set_trace()
+    return rating_mean, rating_count
+
+def get_letterboxd_metrics(film_id):
+    film_url_title = get_from_table('FILM_TITLE', film_id, 'FILM_URL_TITLE')
+    r = requests.get('https://letterboxd.com/film/{}/members/rated/.5-5/'.format(film_url_title))
     soup = BeautifulSoup(r.content, 'lxml')
     metrics_dict = {}
     for i in ['members', 'fans', 'likes', 'reviews', 'lists']:
-        href_str = '/film/{}/{}/'.format(film, i)
+        href_str = '/film/{}/{}/'.format(film_url_title, i)
         try:
             metric_string = soup.find('a', {'class': 'tooltip', 'href':href_str}).get('title')
             metric = int(metric_string[:metric_string.find('\xa0')].replace(',', ''))
         except:
             metric = 0
         metrics_dict[i] = metric
-    r = requests.get('https://letterboxd.com/esi/film/{}/stats/'.format(film))
-    soup = BeautifulSoup(r.content, 'lxml')
-    try:
-        top_ = int(soup.find('a', {'class': 'has-icon icon-top250 icon-16 tooltip'}).text)
-    except:
-        top_ = None
+    return metrics_dict
+
+def update_letterboxd_stats(film_id):
+    rating_mean, rating_count = get_letterboxd_rating(film_id)
+    metrics_dict = get_letterboxd_metrics(film_id)
     letterboxd_info_dict = {
         'FILM_ID': film_id,
         'FILM_WATCH_COUNT': metrics_dict['members'],
@@ -96,24 +155,11 @@ def update_letterboxd_info(film_id):
         'FILM_LIKES_COUNT': metrics_dict['likes'],
         'FILM_REVIEW_COUNT': metrics_dict['reviews'],
         'FILM_LIST_COUNT': metrics_dict['lists'],
-        'FILM_TOP_250': top_,
+        'FILM_TOP_250': get_letterboxd_top250_status(film_id),
         'FILM_RATING': rating_mean,
         'FILM_RATING_COUNT': rating_count,
     }
     insert_record_into_table(letterboxd_info_dict, 'FILM_LETTERBOXD_STATS')
-    update_record("FILM_TITLE", "FILM_URL_TITLE", film, film_id)
-    film_year_dict = {
-        'FILM_ID': film_id,
-        'FILM_YEAR':year,
-        'FILM_DECADE': str(year)[:3]+'0s'
-    }
-    insert_record_into_table(film_year_dict, 'FILM_YEAR')
-    film_genre_dict = {
-        'FILM_ID': film_id,
-        'FILM_GENRE':genre_list[0],
-        'ALL_FILM_GENRES': '/'.join(genre_list)
-    }
-    insert_record_into_table(film_genre_dict, 'FILM_GENRE')
 
 def update_film_metadata(film_id):
     # ping the API
@@ -127,6 +173,7 @@ def update_streaming_info(film_id):
     just_watch = JustWatch(country='GB')
     film_url_title = get_from_table('FILM_TITLE', film_id, 'FILM_URL_TITLE')
     film_release_year = get_from_table('FILM_YEAR', film_id, 'FILM_YEAR')
+    # import ipdb; ipdb.set_trace()
     results = just_watch.search_for_item(query=film_url_title, release_year_from=film_release_year-1, release_year_until=film_release_year+1)
     delete_records('FILMS_AVAILABLE_TO_STREAM', film_id)
     delete_records('FILM_STREAMING_SERVICES', film_id)
@@ -143,33 +190,110 @@ def update_streaming_info(film_id):
                 film_streaming_services_df['STREAMING_SERVICE_ABBR'] = valid_abbr
                 film_streaming_services_df['STREAMING_SERVICE_FULL'] = valid_full
                 df_to_table(film_streaming_services_df, 'FILM_STREAMING_SERVICES', replace_append='append', verbose=True)
+    current_ingestion_record = get_from_table('INGESTED', film_id)
+    new_ingestion_record = ingestion_record(film_id, blank=True)
+    for error_name in ['LETTERBOXD_ERROR', 'METADATA_ERROR']:
+        new_ingestion_record.update_record(error_name, current_ingestion_record.get(error_name))
+    new_ingestion_record.update_record('STREAMING_ERROR', 0)
+    delete_records('INGESTED', film_id)
+    insert_record_into_table(new_ingestion_record.dict, 'INGESTED')
+
+class ingestion_record:
+    def __init__(self, film_id, blank=False):
+        if blank:
+            self.dict = {
+                'FILM_ID': film_id,
+                'INGESTION_DATETIME':datetime.now(),
+                'LETTERBOXD_ERROR':0,
+                'METADATA_ERROR':0,
+                'STREAMING_ERROR':0,
+                'TOTAL_INGESTION_ERRORS': 0
+                        }
+        else:
+            existing_record = get_from_table('INGESTED', film_id)
+            self.dict = {
+            'FILM_ID': film_id,
+            'INGESTION_DATETIME': existing_record.get('INGESTION_DATETIME'),
+            'LETTERBOXD_ERROR': existing_record.get('LETTERBOXD_ERROR', 0),
+            'METADATA_ERROR': existing_record.get('METADATA_ERROR', 0),
+            'STREAMING_ERROR': existing_record.get('STREAMING_ERROR', 0),
+            'TOTAL_INGESTION_ERRORS': existing_record.get('TOTAL_INGESTION_ERRORS', 0)
+                    }
+
+    def recalculate_total_errors(self):
+        self.dict['TOTAL_INGESTION_ERRORS'] = self.dict['LETTERBOXD_ERROR'] + \
+                                              self.dict['METADATA_ERROR'] + \
+                                              self.dict['STREAMING_ERROR']                                                 
+    def update_record(self, key, value):
+        self.dict[key] = value
+        self.recalculate_total_errors()
 
 def ingest_film(film_id):
-    ingestion_record = {
-        'FILM_ID': film_id,
-        'INGESTION_DATETIME':datetime.now(),
-        'LETTERBOXD_ERROR':0,
-        'METADATA_ERROR':0,
-        'STREAMING_ERROR':0,
-        'TOTAL_INGESTION_ERRORS': 0
-                  }
+    blank_ingestion_record = ingestion_record(film_id, blank=True)
     try:
-        update_letterboxd_info(film_id)
+        update_all_letterboxd_info(film_id)
     except:
-        ingestion_record['TOTAL_INGESTION_ERRORS'] += 1
-        ingestion_record['LETTERBOXD_ERROR'] = 1
+        blank_ingestion_record.update_record('LETTERBOXD_ERROR', 1)
         print('Update of Letterboxd info for {} failed'.format(film_id))
     # try:
     #     update_film_metadata(film_id)
     # except:
-        # ingestion_record['TOTAL_INGESTION_ERRORS'] += 1
-        # ingestion_record['METADATA_ERROR'] = 1
+        # blank_ingestion_record.update_record('METADATA_ERROR', 1)
         # print('Update of film metadata info for {} failed'.format(film_id))
     try:
         update_streaming_info(film_id)
     except:
-        ingestion_record['TOTAL_INGESTION_ERRORS'] += 1
-        ingestion_record['STREAMING_ERROR'] = 1
+        blank_ingestion_record.update_record('STREAMING_ERROR', 1)
         print('Update of streaming info for {} failed'.format(film_id))
     delete_records('INGESTED', film_id)
-    insert_record_into_table(ingestion_record, 'INGESTED')
+    insert_record_into_table(blank_ingestion_record.dict, 'INGESTED')
+
+def update_all_letterboxd_info(film_id):
+    existing_ingestion_record = ingestion_record(film_id)
+    reingestion_errors = 0
+    try:
+        get_tmdb_id(film_id)
+    except:
+        print('failed to get the TMDB ID')
+        reingestion_errors += 1
+    try:
+        get_metadata_from_letterboxd(film_id)
+    except:
+        print('failed to get letterboxd metadata')
+        reingestion_errors += 1
+    try:
+        update_letterboxd_stats(film_id)
+    except:
+        print('failed to get letterboxd stats')
+        reingestion_errors += 1
+    reingestion_errors = min(reingestion_errors, 1)
+    existing_ingestion_record.update_record('LETTERBOXD_ERROR', reingestion_errors)
+    delete_records('INGESTED', film_id)
+    insert_record_into_table(existing_ingestion_record.dict, 'INGESTED')
+
+def update_film(film_id):
+    existing_ingestion_record = ingestion_record(film_id)
+    try:
+        update_letterboxd_stats(film_id)
+    except:
+        existing_ingestion_record.update_record('LETTERBOXD_ERROR', 1)
+        print('Update of Letterboxd info for {} failed'.format(film_id))
+    try:
+        update_streaming_info(film_id)
+    except:
+        existing_ingestion_record.update_record('STREAMING_ERROR', 1)
+        print('Update of streaming info for {} failed'.format(film_id))
+    delete_records('INGESTED', film_id)
+    insert_record_into_table(existing_ingestion_record.dict, 'INGESTED')
+
+def ingest_new_films():
+    films_to_ingest = get_new_films()
+    print('In total, there are {} new films to ingest'.format(len(films_to_ingest)))
+    for film_id in tqdm(films_to_ingest):
+        ingest_film(film_id)
+
+def update_existing_films(film_limit=150):
+    films_to_update = get_ingested_films(error_type=None, shuffle=False)[:film_limit]
+    print('In total, we are going to update the oldest {} ingestion records'.format(len(films_to_update)))
+    for film_id in tqdm(films_to_update):
+        update_film(film_id)

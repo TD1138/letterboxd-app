@@ -157,7 +157,7 @@ def delete_records(table_name, film_id):
         print("Error executing update statement:", error)
     db_conn.close()
 
-def query_from_string(select_statement):
+def select_statement_to_df(select_statement):
     db_conn = sql.connect(os.getenv('WORKING_DB'))
     df = pd.read_sql(select_statement, db_conn)
     db_conn.close()
