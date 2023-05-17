@@ -56,10 +56,6 @@
         ["FILM_RATING_COUNT", "INTEGER"]
     ],
 
-    "FILMS_AVAILABLE_TO_STREAM": [
-        ["FILM_ID", "TEXT", "PRIMARY KEY"]
-    ],
-
     "FILM_STREAMING_SERVICES": [
         ["FILM_ID", "TEXT"],
         ["STREAMING_SERVICE_ABBR", "TEXT"],

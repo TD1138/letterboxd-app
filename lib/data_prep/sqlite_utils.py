@@ -67,7 +67,7 @@ def df_to_table(df, table_name, replace_append='replace', verbose=False):
         if verbose: print('dataframe succesfully added to the database {} with the table name {}'.format(os.getenv('WORKING_DB'), table_name))
     except:
         db_conn.close()
-        print('Error - dataframe couldn\'t be added to the database')
+        print('Error - dataframe couldn\'t be added to the database table {}'.format(table_name))
 
 def drop_table(table_name, verbose=False):
     db_conn = sql.connect(os.getenv('WORKING_DB'))
@@ -117,7 +117,12 @@ def get_from_table(table_name, film_id, item=None):
     select_statement = 'SELECT * FROM {} WHERE FILM_ID = "{}"'.format(table_name, film_id)
     df = pd.read_sql(select_statement, db_conn)
     db_conn.close()
-    output = df.to_dict(orient='records')[0]
+    try:
+        output = df.to_dict(orient='records')
+        if len(df) == 1:
+            output = output[0]
+    except:
+        output = {}
     if item:
         output = output.get(item, '')
     return output
@@ -136,16 +141,6 @@ def insert_record_into_table(record, table_name):
     db_conn.commit()
     db_conn.close()
 
-def update_record(table_name, column_name, column_value, film_id):
-    db_conn = sql.connect(os.getenv('WORKING_DB'))
-    c = db_conn.cursor()
-    try:
-        c.execute('UPDATE {} SET {} = ? WHERE film_id = ?'.format(table_name, column_name), (column_value, film_id))
-        db_conn.commit()
-    except sql.Error as error:
-        print("Error executing update statement:", error)
-    db_conn.close()
-
 def delete_records(table_name, film_id):
     db_conn = sql.connect(os.getenv('WORKING_DB'))
     c = db_conn.cursor()
@@ -156,6 +151,20 @@ def delete_records(table_name, film_id):
     except sql.Error as error:
         print("Error executing update statement:", error)
     db_conn.close()
+
+def update_record(table_name, column_name, column_value, film_id):
+    db_conn = sql.connect(os.getenv('WORKING_DB'))
+    c = db_conn.cursor()
+    try:
+        c.execute('UPDATE {} SET {} = ? WHERE film_id = ?'.format(table_name, column_name), (column_value, film_id))
+        db_conn.commit()
+    except sql.Error as error:
+        print("Error executing update statement:", error)
+    db_conn.close()
+
+def replace_record(table_name, record, film_id):
+    delete_records(table_name, film_id)
+    insert_record_into_table(record, table_name)
 
 def select_statement_to_df(select_statement):
     db_conn = sql.connect(os.getenv('WORKING_DB'))
