@@ -96,6 +96,7 @@ def refresh_core_tables():
     diary_df['TAGS'] = diary_df['TAGS'].fillna('')
     diary_df = diary_df.merge(ranking_list[['FILM_ID', 'FILM_POSITION']], how='left', on='FILM_ID')
     diary_df['IS_NARRATIVE_FEATURE'] = np.where(diary_df['FILM_POSITION'].isnull(), 0, 1)
+    # import ipdb; ipdb.set_trace()
     df_to_table(diary_df[['FILM_ID', 'WATCH_DATE', 'FILM_RATING', 'TAGS', 'FIRST_TIME_WATCH', 'IS_NARRATIVE_FEATURE']], 'DIARY', replace_append='replace')
 
     feature_diary_df = diary_df[diary_df['IS_NARRATIVE_FEATURE']==1].reset_index(drop=True)

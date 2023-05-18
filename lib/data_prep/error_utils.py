@@ -17,10 +17,12 @@ def correct_ext_ids_plus_content_type_errors(film_ids=None, refresh=False, dryru
             + content_type_films_to_correct   \
             ))
     total_films = len(films_to_correct)
-    print('There are {} films to correct external ids & content type for:'.format(total_films))
     if dryrun:
         print(films_to_correct[:10])
         return
+    elif total_films == 0:
+        return
+    print('There are {} films to correct external ids & content type for:'.format(total_films))
     errors = 0
     for film_id in tqdm(films_to_correct):
         try:
@@ -50,10 +52,12 @@ def correct_tmdb_metadata_errors(film_ids=None, refresh=False, dryrun=False):
             + cast_films_to_correct           \
             ))
     total_films = len(films_to_correct)
-    print('There are {} films to correct tmdb metadata for:'.format(total_films))
     if dryrun:
         print(films_to_correct[:10])
         return
+    elif total_films == 0:
+        return
+    print('There are {} films to correct tmdb metadata for:'.format(total_films))
     errors = 0
     for film_id in tqdm(films_to_correct):
         try:
@@ -66,11 +70,9 @@ def correct_tmdb_metadata_errors(film_ids=None, refresh=False, dryrun=False):
     successful_films = total_films - errors
     print('Corrected tmdb metadata for {} films ({:.2%})'.format(successful_films, successful_films/total_films))
 
-
 def correct_all_errors(film_ids=None, refresh=False, dryrun=False):
     correct_ext_ids_plus_content_type_errors(film_ids, refresh=refresh, dryrun=dryrun)
     correct_tmdb_metadata_errors(film_ids, refresh=refresh, dryrun=dryrun)
-
 
 imdb_id_select_statement = ("""
 

@@ -38,6 +38,8 @@ def create_movie_metadata_dict(film_id):
             details = movie.details(tmdb_id)
             for k in attrs:
                 movie_metadata_dict[k] = details.get(k, None)
+            if len(movie_metadata_dict.get('keywords', {'keywords': []}).get('keywords', [])) == 0:
+                movie_metadata_dict['keywords']['keywords'] = [{'id': -1, 'name': 'none'}]
         except:
             movie_metadata_dict = None
             update_record('TMDB_ID', 'VALID', 0, film_id)
@@ -57,13 +59,13 @@ def create_movie_metadata_dict(film_id):
                 movie_metadata_dict['runtime'] = None
             movie_metadata_dict['keywords']['keywords'] = movie_metadata_dict['keywords'].pop('results')
             movie_metadata_dict['status'] = movie_metadata_dict['status'].replace('Returning Series', 'Released').replace('Ended', 'Released')
+            if len(movie_metadata_dict.get('keywords', {'keywords': []}).get('keywords', [])) == 0:
+                movie_metadata_dict['keywords']['keywords'] = [{'id': -1, 'name': 'none'}]
         except:
             movie_metadata_dict = None
             update_record('TMDB_ID', 'VALID', 0, film_id)
     else:
         movie_metadata_dict = None
-    if len(movie_metadata_dict.get('keywords', {'keywords': []}).get('keywords', [])) == 0:
-        movie_metadata_dict['keywords']['keywords'] = [{'id': -1, 'name': 'none'}]
     return movie_metadata_dict
 
 def update_financials(movie_metadata_dict):

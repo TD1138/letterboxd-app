@@ -128,7 +128,7 @@ def get_metadata_from_letterboxd(film_id):
     # import ipdb; ipdb.set_trace()
     update_record("FILM_TITLE", "FILM_URL_TITLE", film, film_id)
     try:
-        year = int(list(re.search(r'\((.*?)\)', soup.find('meta', {'property': 'og:title'}).get('content')).groups())[0])
+        year = soup.find('small', {'class': 'number'}).text
     except:
         year = int(datetime.now().strftime('%Y')) + 2
     film_year_dict = {

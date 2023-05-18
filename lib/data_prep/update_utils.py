@@ -1,5 +1,5 @@
 from tqdm import tqdm
-from enrichment_utils import get_film_ids_from_select_statement, update_letterboxd_stats, update_streaming_info, ingest_film, update_film
+from enrichment_utils import get_film_ids_from_select_statement, update_letterboxd_stats, update_streaming_info, ingest_film
 from tmdb_utils import update_tmbd_metadata
 import dotenv
 dotenv.load_dotenv()
