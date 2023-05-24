@@ -2,7 +2,7 @@ import os
 import json
 import pandas as pd
 import sqlite3 as sql
-import time
+from datetime import datetime
 import dotenv
 dotenv.load_dotenv()
 
@@ -179,3 +179,10 @@ def get_film_ids_from_select_statement(select_statement):
         return sql_film_ids
     except:
         print('select statement must output "FILM_ID" column')
+
+def update_ingestion_table(film_id):
+    ingestion_record = {
+        'FILM_ID': film_id,
+        'INGESTION_DATETIME':datetime.now()
+    }
+    replace_record('INGESTED', ingestion_record, film_id)

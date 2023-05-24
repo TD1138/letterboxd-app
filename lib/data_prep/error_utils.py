@@ -1,6 +1,8 @@
 from tqdm import tqdm
-from enrichment_utils import get_film_ids_from_select_statement, get_ext_ids_plus_content_type, ingest_film
+from sqlite_utils import get_film_ids_from_select_statement
+from enrichment_utils import ingest_film
 from tmdb_utils import update_tmbd_metadata
+from letterboxd_utils import get_ext_ids_plus_content_type
 import dotenv
 dotenv.load_dotenv()
 

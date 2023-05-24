@@ -1,12 +1,10 @@
 from random import sample
 from tqdm import tqdm
-from sqlite_utils import table_to_df
 from export_utils import exportfile_to_df, convert_uri_to_id
-from tmdb_utils import get_tmbd_metadata
-# from selenium_utils import return_logged_in_page_source
-from justwatch_utils import update_streaming_info
+from sqlite_utils import table_to_df, update_ingestion_table
 from letterboxd_utils import update_all_letterboxd_info
-from update_utils import update_ingestion_table
+from tmdb_utils import get_tmbd_metadata
+from justwatch_utils import update_streaming_info
 from dotenv import load_dotenv
 
 load_dotenv()

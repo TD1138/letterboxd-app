@@ -3,9 +3,7 @@ import json
 import requests
 from datetime import datetime
 from bs4 import BeautifulSoup
-from sqlite_utils import get_from_table, insert_record_into_table, update_record, replace_record
-from update_utils import update_ingestion_table
-
+from sqlite_utils import get_from_table, insert_record_into_table, update_record, replace_record, update_ingestion_table
 
 def get_metadata_from_letterboxd(film_id):
     letterboxd_url = get_from_table('FILM_TITLE', film_id, 'LETTERBOXD_URL')
