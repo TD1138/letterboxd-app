@@ -1,8 +1,17 @@
+from datetime import datetime
 from tqdm import tqdm
+from sqlite_utils import replace_record
 from enrichment_utils import get_film_ids_from_select_statement, update_letterboxd_stats, update_streaming_info, ingest_film
 from tmdb_utils import update_tmbd_metadata
 import dotenv
 dotenv.load_dotenv()
+
+def update_ingestion_table(film_id):
+    ingestion_record = {
+        'FILM_ID': film_id,
+        'INGESTION_DATETIME':datetime.now()
+    }
+    replace_record('INGESTED', ingestion_record, film_id)
 
 def update_oldest_letterboxd_stats_records(film_ids=None, film_limit=100, dryrun=False):
     if film_ids:
@@ -52,7 +61,7 @@ def update_oldest_streaming_records(film_ids=None, film_limit=100, dryrun=False)
 def update_oldest_records(film_ids=None, film_limit=100, dryrun=False):
     update_oldest_letterboxd_stats_records(film_ids=film_ids, film_limit=film_limit, dryrun=dryrun)
     update_oldest_tmdb_metadata_records(film_ids=film_ids, film_limit=film_limit, dryrun=dryrun)
-    update_oldest_streaming_records(film_ids=film_ids, film_limit=film_limit, dryrun=dryrun)
+    update_oldest_streaming_records(film_ids=film_ids, film_limit=film_limit*10, dryrun=dryrun)
 
 letterboxd_stats_select_statement = ("""
 

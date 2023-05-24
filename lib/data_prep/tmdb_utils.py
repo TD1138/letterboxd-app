@@ -36,6 +36,7 @@ def create_movie_metadata_dict(film_id):
         try:
             movie = Movie()
             details = movie.details(tmdb_id)
+            # import ipdb; ipdb.set_trace()
             for k in attrs:
                 movie_metadata_dict[k] = details.get(k, None)
             if len(movie_metadata_dict.get('keywords', {'keywords': []}).get('keywords', [])) == 0:

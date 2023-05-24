@@ -171,3 +171,11 @@ def select_statement_to_df(select_statement):
     df = pd.read_sql(select_statement, db_conn)
     db_conn.close()
     return df
+
+def get_film_ids_from_select_statement(select_statement):
+    sql_df = select_statement_to_df(select_statement)
+    try:
+        sql_film_ids = list(sql_df['FILM_ID'].values)
+        return sql_film_ids
+    except:
+        print('select statement must output "FILM_ID" column')
