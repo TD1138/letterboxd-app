@@ -3,8 +3,9 @@ from sqlite_utils import get_film_ids_from_select_statement
 from enrichment_utils import ingest_film
 from tmdb_utils import update_tmbd_metadata
 from letterboxd_utils import get_ext_ids_plus_content_type
-import dotenv
-dotenv.load_dotenv()
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def correct_ext_ids_plus_content_type_errors(film_ids=None, refresh=False, dryrun=False):
     if film_ids:
@@ -23,6 +24,7 @@ def correct_ext_ids_plus_content_type_errors(film_ids=None, refresh=False, dryru
         print(films_to_correct[:10])
         return
     elif total_films == 0:
+        print('There are {} films to correct external ids & content type for:'.format(total_films))    
         return
     print('There are {} films to correct external ids & content type for:'.format(total_films))
     errors = 0
@@ -58,6 +60,7 @@ def correct_tmdb_metadata_errors(film_ids=None, refresh=False, dryrun=False):
         print(films_to_correct[:10])
         return
     elif total_films == 0:
+        print('There are {} films to correct tmdb metadata for:'.format(total_films))
         return
     print('There are {} films to correct tmdb metadata for:'.format(total_films))
     errors = 0

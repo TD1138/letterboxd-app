@@ -5,7 +5,6 @@ from datetime import datetime
 from sqlite_utils import get_from_table, delete_records, df_to_table
 from justwatch import JustWatch
 
-
 def update_streaming_info(film_id):
     with open('my_streaming_services.json', 'r') as schema:
         my_streaming_services = json.load(schema)
@@ -26,7 +25,7 @@ def update_streaming_info(film_id):
             provider_abbreviations = list(set([x['package_short_name'] for x in first_result.get('offers', []) if x['monetization_type'] in ['flatrate', 'free', 'ads']]))
             valid_abbr = [x for x in provider_abbreviations if x in my_streaming_services_abbr]
             valid_abbr.append('rent')
-            rental_prices = [x['retail_price'] for x in first_result['offers'] if x['monetization_type'] == 'rent' and x['presentation_type'] == 'hd']
+            rental_prices = [x['retail_price'] for x in first_result.get('offers', []) if x['monetization_type'] == 'rent' and x['presentation_type'] == 'hd']
             if len(rental_prices) > 0:
                 min_rental_price = min(rental_prices)
             else:

@@ -5,8 +5,9 @@ from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 import chromedriver_autoinstaller
-import dotenv
-dotenv.load_dotenv()
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def download_letterboxd_zip(hide_actions=True):
     try:

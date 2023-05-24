@@ -4,8 +4,9 @@ from sqlite_utils import replace_record, get_film_ids_from_select_statement
 from enrichment_utils import update_streaming_info
 from tmdb_utils import update_tmbd_metadata
 from letterboxd_utils import update_letterboxd_stats
-import dotenv
-dotenv.load_dotenv()
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def update_oldest_letterboxd_stats_records(film_ids=None, film_limit=100, dryrun=False):
     if film_ids:
@@ -50,7 +51,10 @@ def update_oldest_streaming_records(film_ids=None, film_limit=100, dryrun=False)
         try:
             update_streaming_info(film_id)
         except Exception as e:
-            print('Update of streaming info for {} failed ({})'.format(film_id, e))   
+            print('Update of streaming info for {} failed ({})'.format(film_id, e))
+            if '429' in str(e):
+                print('Too Many Requests - Exit Update')
+                break
 
 def update_oldest_records(film_ids=None, film_limit=100, dryrun=False):
     update_oldest_letterboxd_stats_records(film_ids=film_ids, film_limit=film_limit, dryrun=dryrun)

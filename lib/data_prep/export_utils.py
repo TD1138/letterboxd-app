@@ -6,6 +6,7 @@ from datetime import datetime
 import time
 from sqlite_utils import df_to_table
 import dotenv
+
 dotenv.load_dotenv()
 
 def convert_uri_to_id(letterboxd_uri):
@@ -35,17 +36,17 @@ def get_latest_export_date():
     latest_export_date = sorted(letterboxd_exports_datetimes)[-1]
     return latest_export_date
 
-def set_latest_export():
+def set_latest_export(verbose=False):
     latest_export_filename = 'letterboxd-' + os.getenv('LETTERBOXD_USER') + '-' + get_latest_export_date()
     latest_export_file_loc = os.path.join(os.getenv('PROJECT_PATH'), 'db/raw_exports') + '/' + latest_export_filename
     dotenv.set_key(dotenv.find_dotenv(), 'LATEST_EXPORT', latest_export_file_loc)
+    if verbose: print('Latest export set to {}'.format(latest_export_file_loc))
 
 def cleanup_exports_folder():
     letterboxd_export_folders = get_all_export_folders()
     if len(letterboxd_export_folders) == 5:
         folders_to_delete = [letterboxd_export_folders[1], letterboxd_export_folders[3]]
         for folder in folders_to_delete:
-            print(folder)
             shutil.rmtree(os.getenv('PROJECT_PATH')+'/db/raw_exports/'+folder)
 
 def exportfile_to_df(export_filename, skiprows=None):
