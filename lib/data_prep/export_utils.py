@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import os
 import shutil
-import datetime
+from datetime import datetime
 import time
 from sqlite_utils import df_to_table
 import dotenv
@@ -20,19 +20,33 @@ def unzip_letterboxd_downloads():
             time.sleep(5)
             os.remove(file_path)
 
+def get_all_export_folders():
+    letterboxd_exports_folder_dir = os.path.join(os.getenv('PROJECT_PATH'), 'db/raw_exports')
+    letterboxd_export_folders = os.listdir(letterboxd_exports_folder_dir)
+    return letterboxd_export_folders
+
+def get_all_export_dates():
+    letterboxd_export_folders = get_all_export_folders()
+    letterboxd_exports_datetimes = [x.replace('letterboxd-{}-'.format(os.getenv('LETTERBOXD_USER')), '') for x in letterboxd_export_folders]
+    return letterboxd_exports_datetimes
+
+def get_latest_export_date():
+    letterboxd_exports_datetimes = get_all_export_dates()
+    latest_export_date = sorted(letterboxd_exports_datetimes)[-1]
+    return latest_export_date
+
 def set_latest_export():
-    latest_date = datetime.datetime.strptime('20200101', '%Y%m%d')
-    letterboxd_user_name = os.getenv('LETTERBOXD_USER')
-    letterboxd_exports_folder = os.path.join(os.getenv('PROJECT_PATH'), 'db/raw_exports')
-    for i in os.listdir(letterboxd_exports_folder):
-        if i[0] != '.':
-            tmp = i.replace('letterboxd-'+letterboxd_user_name+'-', '')
-            tmp_parsed = datetime.datetime.strptime(tmp, '%Y-%m-%d-%H-%M-%Z')
-            if tmp_parsed > latest_date:
-                latest_date = tmp_parsed
-    latest_export_filename = 'letterboxd-' + letterboxd_user_name + '-' + datetime.datetime.strftime(latest_date, '%Y-%m-%d-%H-%M-%Z')+'utc'
-    latest_export_file_loc = letterboxd_exports_folder + '/' + latest_export_filename
+    latest_export_filename = 'letterboxd-' + os.getenv('LETTERBOXD_USER') + '-' + get_latest_export_date()
+    latest_export_file_loc = os.path.join(os.getenv('PROJECT_PATH'), 'db/raw_exports') + '/' + latest_export_filename
     dotenv.set_key(dotenv.find_dotenv(), 'LATEST_EXPORT', latest_export_file_loc)
+
+def cleanup_exports_folder():
+    letterboxd_export_folders = get_all_export_folders()
+    if len(letterboxd_export_folders) == 5:
+        folders_to_delete = [letterboxd_export_folders[1], letterboxd_export_folders[3]]
+        for folder in folders_to_delete:
+            print(folder)
+            shutil.rmtree(os.getenv('PROJECT_PATH')+'/db/raw_exports/'+folder)
 
 def exportfile_to_df(export_filename, skiprows=None):
     export_df = pd.read_csv(os.path.join(os.getenv('LATEST_EXPORT'), export_filename), skiprows=skiprows)
