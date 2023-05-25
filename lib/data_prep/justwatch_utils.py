@@ -12,7 +12,7 @@ def update_streaming_info(film_id):
     abbr_to_full_dict = {x['provider_abbreviation']:x['streaming_service'] for x in my_streaming_services if len(x['provider_abbreviation']) > 0}
     abbr_to_full_dict['rent'] = 'Rental'
     just_watch = JustWatch(country='GB')
-    film_url_title = get_from_table('FILM_TITLE', film_id, 'FILM_URL_TITLE')
+    film_url_title = get_from_table('FILM_URL_TITLE', film_id, 'FILM_URL_TITLE')
     if film_url_title == '':
         film_url_title = get_from_table('FILM_TITLE', film_id, 'FILM_TITLE')
     film_release_year = get_from_table('FILM_YEAR', film_id, 'FILM_YEAR')

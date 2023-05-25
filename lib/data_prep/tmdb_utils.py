@@ -1,15 +1,13 @@
 import os
 import pandas as pd
 from datetime import datetime
-from tmdbv3api import TMDb
-from tmdbv3api import Movie, TV
+from tmdbv3api import TMDb, Movie, TV, Person
 from sqlite_utils import get_from_table, delete_records, insert_record_into_table, df_to_table, replace_record, update_record
 from dotenv import load_dotenv
 
 load_dotenv()
 
 tmdb_api_key = os.getenv('TMDB_API_KEY')
-
 tmdb = TMDb()
 tmdb.api_key = tmdb_api_key
 
@@ -26,6 +24,27 @@ attrs = {
     'vote_count': 'vote_count',
     'keywords': 'keywords',
     'casts': 'credits'
+}
+
+required_crew = [
+    'Director',
+    'Director of Photography',
+    'Editor',
+    'Original Music Composer',
+    'Screenplay',
+    ''
+]
+
+person_attrs = {
+    'id': 'PERSON_ID',
+    'name': 'PERSON_NAME',
+    'imdb_id': 'IMDB_PERSON_ID',
+    'gender': 'GENDER',
+    'birthday': 'DATE_OF_BIRTH',
+    'deathday': 'DATE_OF_DEATH',
+    'known_for_department': 'KNOWN_FOR_DEPARTMENT',
+    'place_of_birth': 'PLACE_OF_BIRTH',
+    'popularity': 'PERSON_POPULARITY'
 }
 
 def create_movie_metadata_dict(film_id):
@@ -156,6 +175,21 @@ def update_cast(movie_metadata_dict):
         delete_records('FILM_CAST', film_id)
         df_to_table(cast_df, 'FILM_CAST', replace_append='append', verbose=False)
 
+def update_crew(movie_metadata_dict):
+    film_id = movie_metadata_dict.get('FILM_ID')
+    crew = movie_metadata_dict.get('casts', {'crew': [{'id': -1, 'job': ''}]})
+    if crew:
+        crew = crew.get('crew')
+        crew = [x for x in crew if x['job'] in required_crew]
+        crew_df = pd.DataFrame({
+            'FILM_ID': [film_id]*len(crew),
+            'PERSON_ID':[x.get('id') for x in crew],
+            'JOB':[x.get('job') for x in crew],
+            'CREATED_AT': [datetime.now()]*len(crew)
+            })
+        delete_records('FILM_CREW', film_id)
+        df_to_table(crew_df, 'FILM_CREW', replace_append='append', verbose=False)
+
 def update_collections(movie_metadata_dict):
     film_id = movie_metadata_dict.get('FILM_ID')
     collection = movie_metadata_dict.get('belongs_to_collection')
@@ -184,6 +218,7 @@ def update_tmbd_metadata(film_id):
         update_release_info(movie_metadata_dict)
         update_keywords(movie_metadata_dict)
         update_cast(movie_metadata_dict)
+        update_crew(movie_metadata_dict)
         update_collections(movie_metadata_dict)
     return movie_metadata_dict
     
@@ -192,3 +227,24 @@ def get_tmbd_metadata(film_id):
     if movie_metadata_dict:
         get_language(movie_metadata_dict)
         get_runtime(movie_metadata_dict)
+
+def create_person_metadata_dict(person_id):
+    person_metadata_dict = {'PERSON_ID': person_id}
+    try:
+        person = Person()
+        details = person.details(person_id)
+        for k in person_attrs:
+            person_metadata_dict[person_attrs[k]] = details.get(k, None)
+        person_metadata_dict['VALID'] = 1
+    except:
+        person_metadata_dict = None
+        update_record('PERSON_INFO', 'VALID', 0, person_id, primary_key='PERSON_ID')
+    return person_metadata_dict
+
+def update_person_metadata(person_id):
+    person_metadata_dict = create_person_metadata_dict(person_id)
+    if person_metadata_dict:
+        replace_record('PERSON_INFO', person_metadata_dict, person_id, primary_key='PERSON_ID')
+
+def get_person_metadata(person_id):
+    update_person_metadata(person_id)

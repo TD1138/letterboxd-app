@@ -1,6 +1,6 @@
 from tqdm import tqdm
 from export_utils import refresh_core_tables
-from enrichment_utils import get_all_films, update_all_letterboxd_info, ingest_film
+from enrichment_utils import get_all_films, update_all_letterboxd_info, ingest_film, ingest_new_people
 from sqlite_utils import get_from_table, get_film_ids_from_select_statement
 from tmdb_utils import get_tmbd_metadata, update_tmdb_stats
 from error_utils import correct_tmdb_metadata_errors, correct_all_errors
@@ -18,7 +18,8 @@ WHERE b.CREATED_AT IS NULL
 ORDER BY c.FILM_WATCH_COUNT DESC
 
 """)
-films_to_ingest = get_film_ids_from_select_statement(select_statement)
+
+# films_to_ingest = get_film_ids_from_select_statement(select_statement)
 # # films_to_ingest = get_film_ids_from_select_statement("SELECT * FROM FILM_RELEASE_INFO WHERE FILM_STATUS = 'Ended' OR FILM_STATUS = 'Returning Series'")
 # # films_to_ingest = get_all_films()
 # # films_to_ingest = ['f_0hK9G'] # OVERRIDE TO DEBUG SPECIFIC FILMS
@@ -37,4 +38,11 @@ films_to_ingest = get_film_ids_from_select_statement(select_statement)
 # update_oldest_records(film_limit=10, dryrun=False)
 # refresh_core_tables()
 
-update_oldest_streaming_records(films_to_ingest[:1000])
+# ingest_film('f_020Z2')
+# update_oldest_streaming_records(films_to_ingest[:1000])
+
+# correct_all_errors(film_ids=None, refresh=False, dryrun=False)
+
+ingest_new_people(500)
+
+

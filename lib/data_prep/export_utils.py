@@ -93,9 +93,8 @@ def refresh_core_tables():
     df_to_table(watchlist_df[['FILM_ID', 'ADDED_DATE']], 'WATCHLIST', replace_append='replace')
 
     all_films_df = pd.concat([watched_df, watchlist_df])
-    all_films_df['FILM_URL_TITLE'] = ''
-    title_df = all_films_df[['FILM_ID', 'NAME', 'FILM_URL_TITLE', 'LETTERBOXD_URI']]
-    title_df.columns = ['FILM_ID', 'FILM_TITLE', 'FILM_URL_TITLE', 'LETTERBOXD_URL']
+    title_df = all_films_df[['FILM_ID', 'NAME', 'LETTERBOXD_URI']]
+    title_df.columns = ['FILM_ID', 'FILM_TITLE', 'LETTERBOXD_URL']
     df_to_table(title_df, 'FILM_TITLE', replace_append='replace')
 
     ranking_list = exportfile_to_df('lists/every-film-ranked.csv', skiprows=3)

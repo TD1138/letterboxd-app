@@ -1,9 +1,9 @@
 from random import sample
 from tqdm import tqdm
 from export_utils import exportfile_to_df, convert_uri_to_id
-from sqlite_utils import table_to_df, update_ingestion_table
+from sqlite_utils import table_to_df, update_ingestion_table, get_person_ids_from_select_statement
 from letterboxd_utils import update_all_letterboxd_info
-from tmdb_utils import get_tmbd_metadata
+from tmdb_utils import get_tmbd_metadata, get_person_metadata
 from justwatch_utils import update_streaming_info
 from dotenv import load_dotenv
 
@@ -54,8 +54,29 @@ def ingest_film(film_id):
         print('Update of streaming info for {} failed ({})'.format(film_id, e))
     update_ingestion_table(film_id)
 
-def ingest_new_films():
-    films_to_ingest = get_new_films()
-    print('In total, there are {} new films to ingest'.format(len(films_to_ingest)))
+def ingest_new_films(film_limit=100):
+    total_films_to_ingest = get_new_films()
+    films_to_ingest = total_films_to_ingest[:film_limit]
+    print('In total, there are {} new films to ingest - ingesting {}'.format(len(total_films_to_ingest), len(films_to_ingest)))
     for film_id in tqdm(films_to_ingest):
         ingest_film(film_id)
+
+def get_new_people():
+    ingested_person_ids = get_person_ids_from_select_statement('SELECT DISTINCT PERSON_ID FROM PERSON_INFO')
+    all_person_ids = get_person_ids_from_select_statement('SELECT DISTINCT PERSON_ID FROM FILM_CREW')
+    new_person_ids = [x for x in all_person_ids if x not in ingested_person_ids]
+    new_person_ids = sample(new_person_ids, len(new_person_ids))
+    return new_person_ids
+
+def ingest_person(person_id):
+    try:
+        get_person_metadata(person_id)
+    except Exception as e:
+        print('Update of Person metadata for {} failed ({})'.format(person_id, e))
+
+def ingest_new_people(people_limit=100):
+    total_people_to_ingest = get_new_people()
+    people_to_ingest = total_people_to_ingest[:people_limit]
+    print('In total, there are {} new people to ingest - ingesting {}'.format(len(total_people_to_ingest), len(people_to_ingest)))
+    for person_id in tqdm(people_to_ingest):
+        ingest_person(person_id)

@@ -14,8 +14,7 @@ def get_metadata_from_letterboxd(film_id):
     soup = BeautifulSoup(r.content, 'lxml')
     og_url = soup.find('meta', {'property': 'og:url'}).get('content')
     film = og_url.split('/')[-2]
-    # import ipdb; ipdb.set_trace()
-    update_record("FILM_TITLE", "FILM_URL_TITLE", film, film_id)
+    update_record("FILM_URL_TITLE", "FILM_URL_TITLE", film, film_id)
     try:
         year = soup.find('small', {'class': 'number'}).text
     except:
@@ -39,7 +38,7 @@ def get_metadata_from_letterboxd(film_id):
     replace_record('FILM_GENRE', film_genre_dict, film_id)
 
 def get_letterboxd_top250_status(film_id):
-    film_url_title = get_from_table('FILM_TITLE', film_id, 'FILM_URL_TITLE')
+    film_url_title = get_from_table('FILM_URL_TITLE', film_id, 'FILM_URL_TITLE')
     r = requests.get('https://letterboxd.com/esi/film/{}/stats/'.format(film_url_title))
     soup = BeautifulSoup(r.content, 'lxml')
     try:
@@ -67,7 +66,7 @@ def get_letterboxd_rating(film_id):
     return rating_mean, rating_count
 
 def get_letterboxd_metrics(film_id):
-    film_url_title = get_from_table('FILM_TITLE', film_id, 'FILM_URL_TITLE')
+    film_url_title = get_from_table('FILM_URL_TITLE', film_id, 'FILM_URL_TITLE')
     r = requests.get('https://letterboxd.com/film/{}/members/rated/.5-5/'.format(film_url_title))
     soup = BeautifulSoup(r.content, 'lxml')
     metrics_dict = {}
