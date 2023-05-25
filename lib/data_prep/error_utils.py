@@ -9,7 +9,8 @@ load_dotenv()
 
 def correct_letterboxd_metadata_errors(film_ids=None, refresh=False, dryrun=False, film_limit=1000):
     if film_ids:
-        films_to_correct = film_ids
+        total_films_to_correct = film_ids
+        films_to_correct = total_films_to_correct[:film_limit]
     else:
         title_films_to_correct = get_film_ids_from_select_statement(title_select_statement)
         year_films_to_correct = get_film_ids_from_select_statement(year_select_statement)
@@ -40,7 +41,8 @@ def correct_letterboxd_metadata_errors(film_ids=None, refresh=False, dryrun=Fals
 
 def correct_ext_ids_plus_content_type_errors(film_ids=None, refresh=False, dryrun=False, film_limit=1000):
     if film_ids:
-        films_to_correct = film_ids
+        total_films_to_correct = film_ids
+        films_to_correct = total_films_to_correct[:film_limit]
     else:
         imdb_films_to_correct = get_film_ids_from_select_statement(imdb_id_select_statement)
         tmdb_films_to_correct = get_film_ids_from_select_statement(tmdb_id_select_statement)
@@ -71,7 +73,8 @@ def correct_ext_ids_plus_content_type_errors(film_ids=None, refresh=False, dryru
 
 def correct_tmdb_metadata_errors(film_ids=None, refresh=False, dryrun=False, film_limit=1000):
     if film_ids:
-        films_to_correct = film_ids
+        total_films_to_correct = film_ids
+        films_to_correct = total_films_to_correct[:film_limit]
     else:
         financials_films_to_correct = get_film_ids_from_select_statement(financials_select_statement)
         tmdb_stats_films_to_correct = get_film_ids_from_select_statement(tmdb_stats_select_statement)
@@ -79,7 +82,7 @@ def correct_tmdb_metadata_errors(film_ids=None, refresh=False, dryrun=False, fil
         keyword_films_to_correct = get_film_ids_from_select_statement(keyword_select_statement)    
         cast_films_to_correct = get_film_ids_from_select_statement(cast_select_statement)
         crew_films_to_correct = get_film_ids_from_select_statement(crew_select_statement)
-        total_films_to_correct = list(set(          \
+        total_films_to_correct = list(set(    \
             financials_films_to_correct       \
             + tmdb_stats_films_to_correct     \
             + release_info_films_to_correct   \
@@ -318,7 +321,7 @@ AND c.VALID = 1
 
 cast_select_statement = ("""
 
-SELECT FILM_ID, MAX(CAST_ORDER) AS CAST_SIZE FROM (
+SELECT FILM_ID, COALESCE(MAX(CAST_ORDER), 0) AS CAST_SIZE FROM (
 
 SELECT
 

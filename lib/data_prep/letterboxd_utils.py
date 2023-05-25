@@ -14,7 +14,12 @@ def get_metadata_from_letterboxd(film_id):
     soup = BeautifulSoup(r.content, 'lxml')
     og_url = soup.find('meta', {'property': 'og:url'}).get('content')
     film = og_url.split('/')[-2]
-    update_record("FILM_URL_TITLE", "FILM_URL_TITLE", film, film_id)
+    film_url_dict = {
+        'FILM_ID': film_id,
+        'FILM_URL_TITLE': film,
+        'CREATED_AT': datetime.now()
+    }
+    replace_record('FILM_URL_TITLE', film_url_dict, film_id)
     try:
         year = soup.find('small', {'class': 'number'}).text
     except:

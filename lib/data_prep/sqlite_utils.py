@@ -119,7 +119,9 @@ def get_from_table(table_name, film_id, item=None):
     db_conn.close()
     try:
         output = df.to_dict(orient='records')
-        if len(df) == 1:
+        if len(df) == 0:
+            output = {}    
+        elif len(df) == 1:
             output = output[0]
     except:
         output = {}

@@ -55,7 +55,6 @@ def create_movie_metadata_dict(film_id):
         try:
             movie = Movie()
             details = movie.details(tmdb_id)
-            # import ipdb; ipdb.set_trace()
             for k in attrs:
                 movie_metadata_dict[k] = details.get(k, None)
             if len(movie_metadata_dict.get('keywords', {'keywords': []}).get('keywords', [])) == 0:
@@ -163,32 +162,34 @@ def update_keywords(movie_metadata_dict):
 def update_cast(movie_metadata_dict):
     film_id = movie_metadata_dict.get('FILM_ID')
     cast = movie_metadata_dict.get('casts', {'cast': [{'id': -1, 'character': '', 'order':-1}]})
-    if cast:
-        cast = cast.get('cast')
-        cast_df = pd.DataFrame({
-            'FILM_ID': [film_id]*len(cast),
-            'PERSON_ID':[x.get('id') for x in cast],
-            'CHARACTER':[x.get('character') for x in cast],
-            'CAST_ORDER':[x.get('order') for x in cast],
-            'CREATED_AT': [datetime.now()]*len(cast)
-            })
-        delete_records('FILM_CAST', film_id)
-        df_to_table(cast_df, 'FILM_CAST', replace_append='append', verbose=False)
+    cast = cast.get('cast')
+    if len(cast) == 0:
+        cast = [{'id': -1, 'character': '', 'order':-1}]
+    cast_df = pd.DataFrame({
+        'FILM_ID': [film_id]*len(cast),
+        'PERSON_ID':[x.get('id') for x in cast],
+        'CHARACTER':[x.get('character') for x in cast],
+        'CAST_ORDER':[x.get('order') for x in cast],
+        'CREATED_AT': [datetime.now()]*len(cast)
+        })
+    delete_records('FILM_CAST', film_id)
+    df_to_table(cast_df, 'FILM_CAST', replace_append='append', verbose=False)
 
 def update_crew(movie_metadata_dict):
     film_id = movie_metadata_dict.get('FILM_ID')
     crew = movie_metadata_dict.get('casts', {'crew': [{'id': -1, 'job': ''}]})
-    if crew:
-        crew = crew.get('crew')
-        crew = [x for x in crew if x['job'] in required_crew]
-        crew_df = pd.DataFrame({
-            'FILM_ID': [film_id]*len(crew),
-            'PERSON_ID':[x.get('id') for x in crew],
-            'JOB':[x.get('job') for x in crew],
-            'CREATED_AT': [datetime.now()]*len(crew)
-            })
-        delete_records('FILM_CREW', film_id)
-        df_to_table(crew_df, 'FILM_CREW', replace_append='append', verbose=False)
+    crew = crew.get('crew')
+    crew = [x for x in crew if x['job'] in required_crew]
+    if len(crew) == 0:
+        crew = [{'id': -1, 'job': ''}]
+    crew_df = pd.DataFrame({
+        'FILM_ID': [film_id]*len(crew),
+        'PERSON_ID':[x.get('id') for x in crew],
+        'JOB':[x.get('job') for x in crew],
+        'CREATED_AT': [datetime.now()]*len(crew)
+        })
+    delete_records('FILM_CREW', film_id)
+    df_to_table(crew_df, 'FILM_CREW', replace_append='append', verbose=False)
 
 def update_collections(movie_metadata_dict):
     film_id = movie_metadata_dict.get('FILM_ID')
@@ -211,7 +212,6 @@ def update_collections(movie_metadata_dict):
 
 def update_tmbd_metadata(film_id):
     movie_metadata_dict = create_movie_metadata_dict(film_id)
-    # import ipdb; ipdb.set_trace()
     if movie_metadata_dict:
         update_financials(movie_metadata_dict)
         update_tmdb_stats(movie_metadata_dict)

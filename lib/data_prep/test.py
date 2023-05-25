@@ -8,14 +8,10 @@ from update_utils import update_oldest_records, update_oldest_streaming_records
 
 select_statement = ("""
 
-SELECT a.FILM_ID
-FROM ALL_RELEASED_FILMS a
-LEFT JOIN FILM_STREAMING_SERVICES b
-ON a.FILM_ID = b.FILM_ID
-LEFT JOIN FILM_LETTERBOXD_STATS c
-ON a.FILM_ID = c.FILM_ID
-WHERE b.CREATED_AT IS NULL
-ORDER BY c.FILM_WATCH_COUNT DESC
+SELECT *
+FROM FILM_LETTERBOXD_STATS
+ORDER BY FILM_WATCH_COUNT DESC
+LIMIT 100
 
 """)
 
@@ -39,10 +35,11 @@ ORDER BY c.FILM_WATCH_COUNT DESC
 # refresh_core_tables()
 
 # ingest_film('f_020Z2')
-# update_oldest_streaming_records(films_to_ingest[:1000])
+# update_oldest_streaming_records(['f_0jxmG'])
 
-# correct_all_errors(film_ids=None, refresh=False, dryrun=False)
+# correct_all_errors(film_ids=None, refresh=False, dryrun=False, film_limit=100)
+# correct_all_errors(film_ids=['f_0jY7I'])
 
-ingest_new_people(500)
+ingest_new_people(10000)
 
 

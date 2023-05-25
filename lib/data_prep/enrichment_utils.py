@@ -64,7 +64,7 @@ def ingest_new_films(film_limit=100):
 def get_new_people():
     ingested_person_ids = get_person_ids_from_select_statement('SELECT DISTINCT PERSON_ID FROM PERSON_INFO')
     all_person_ids = get_person_ids_from_select_statement('SELECT DISTINCT PERSON_ID FROM FILM_CREW')
-    new_person_ids = [x for x in all_person_ids if x not in ingested_person_ids]
+    new_person_ids = [x for x in all_person_ids if x not in ingested_person_ids and x != -1]
     new_person_ids = sample(new_person_ids, len(new_person_ids))
     return new_person_ids
 
