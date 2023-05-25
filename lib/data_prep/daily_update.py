@@ -5,8 +5,6 @@ from error_utils import correct_all_errors
 from update_utils import update_oldest_records
 import sys
 
-print(sys.argv[1])
-
 if sys.argv[1] == 'nozip':
     print('Proceeding with daily update with no download of letterboxd zip file')
 else:

@@ -14,18 +14,17 @@ def correct_letterboxd_metadata_errors(film_ids=None, refresh=False, dryrun=Fals
         title_films_to_correct = get_film_ids_from_select_statement(title_select_statement)
         year_films_to_correct = get_film_ids_from_select_statement(year_select_statement)
         genre_films_to_correct = get_film_ids_from_select_statement(genre_select_statement)
-        films_to_correct = list(set(          \
+        total_films_to_correct = list(set(          \
             title_films_to_correct             \
             + year_films_to_correct           \
             + genre_films_to_correct   \
             ))
-        films_to_correct = films_to_correct[:film_limit]
-    total_films = len(films_to_correct)
-    print('There are {} films to correct letterboxd_metadata for:'.format(total_films))
+        films_to_correct = total_films_to_correct[:film_limit]
+    print('In total, there are {} new films to correct letterboxd metadata for - correcting {}'.format(len(total_films_to_correct), len(films_to_correct)))
     if dryrun:
         print(films_to_correct[:10])
         return
-    elif total_films == 0:
+    elif len(films_to_correct) == 0:
         return
     errors = 0
     for film_id in tqdm(films_to_correct):
@@ -36,8 +35,8 @@ def correct_letterboxd_metadata_errors(film_ids=None, refresh=False, dryrun=Fals
                 get_metadata_from_letterboxd(film_id)
         except:
             errors += 1
-    successful_films = total_films - errors
-    print('Corrected letterboxd_metadata for {} films ({:.2%})'.format(successful_films, successful_films/total_films))
+    successful_films = len(films_to_correct) - errors
+    print('Corrected letterboxd_metadata for {} films ({:.2%})'.format(successful_films, successful_films/len(films_to_correct)))
 
 def correct_ext_ids_plus_content_type_errors(film_ids=None, refresh=False, dryrun=False, film_limit=1000):
     if film_ids:
@@ -46,18 +45,17 @@ def correct_ext_ids_plus_content_type_errors(film_ids=None, refresh=False, dryru
         imdb_films_to_correct = get_film_ids_from_select_statement(imdb_id_select_statement)
         tmdb_films_to_correct = get_film_ids_from_select_statement(tmdb_id_select_statement)
         content_type_films_to_correct = get_film_ids_from_select_statement(content_type_select_statement)
-        films_to_correct = list(set(          \
+        total_films_to_correct = list(set(          \
             imdb_films_to_correct             \
             + tmdb_films_to_correct           \
             + content_type_films_to_correct   \
             ))
-        films_to_correct = films_to_correct[:film_limit]
-    total_films = len(films_to_correct)
-    print('There are {} films to correct external ids & content type for:'.format(total_films))
+        films_to_correct = total_films_to_correct[:film_limit]
+    print('In total, there are {} new films to correct external ids & content type for - correcting {}'.format(len(total_films_to_correct), len(films_to_correct)))
     if dryrun:
         print(films_to_correct[:10])
         return
-    elif total_films == 0:
+    elif len(films_to_correct) == 0:
         return
     errors = 0
     for film_id in tqdm(films_to_correct):
@@ -68,8 +66,8 @@ def correct_ext_ids_plus_content_type_errors(film_ids=None, refresh=False, dryru
                 get_ext_ids_plus_content_type(film_id)
         except:
             errors += 1
-    successful_films = total_films - errors
-    print('Corrected external ids & content type for {} films ({:.2%})'.format(successful_films, successful_films/total_films))
+    successful_films = len(films_to_correct) - errors
+    print('Corrected external ids & content type for {} films ({:.2%})'.format(successful_films, successful_films/len(films_to_correct)))
 
 def correct_tmdb_metadata_errors(film_ids=None, refresh=False, dryrun=False, film_limit=1000):
     if film_ids:
@@ -81,7 +79,7 @@ def correct_tmdb_metadata_errors(film_ids=None, refresh=False, dryrun=False, fil
         keyword_films_to_correct = get_film_ids_from_select_statement(keyword_select_statement)    
         cast_films_to_correct = get_film_ids_from_select_statement(cast_select_statement)
         crew_films_to_correct = get_film_ids_from_select_statement(crew_select_statement)
-        films_to_correct = list(set(          \
+        total_films_to_correct = list(set(          \
             financials_films_to_correct       \
             + tmdb_stats_films_to_correct     \
             + release_info_films_to_correct   \
@@ -89,13 +87,12 @@ def correct_tmdb_metadata_errors(film_ids=None, refresh=False, dryrun=False, fil
             + cast_films_to_correct           \
             + crew_films_to_correct           \
             ))
-        films_to_correct = films_to_correct[:film_limit]
-    total_films = len(films_to_correct)
-    print('There are {} films to correct tmdb metadata for:'.format(total_films))
+        films_to_correct = total_films_to_correct[:film_limit]
+    print('In total, there are {} new films to correct tmdb metadata for - correcting {}'.format(len(total_films_to_correct), len(films_to_correct)))
     if dryrun:
         print(films_to_correct[:10])
         return
-    elif total_films == 0:
+    elif len(films_to_correct) == 0:
         return
     errors = 0
     for film_id in tqdm(films_to_correct):
@@ -106,8 +103,8 @@ def correct_tmdb_metadata_errors(film_ids=None, refresh=False, dryrun=False, fil
                 update_tmbd_metadata(film_id)
         except:
             errors += 1
-    successful_films = total_films - errors
-    print('Corrected tmdb metadata for {} films ({:.2%})'.format(successful_films, successful_films/total_films))
+    successful_films = len(films_to_correct) - errors
+    print('Corrected tmdb metadata for {} films ({:.2%})'.format(successful_films, successful_films/len(films_to_correct)))
 
 def correct_all_errors(film_ids=None, refresh=False, dryrun=False, film_limit=1000):
     correct_letterboxd_metadata_errors(film_ids, refresh=refresh, dryrun=dryrun, film_limit=film_limit)
