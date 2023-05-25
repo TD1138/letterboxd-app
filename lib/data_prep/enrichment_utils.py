@@ -74,7 +74,7 @@ def ingest_person(person_id):
     except Exception as e:
         print('Update of Person metadata for {} failed ({})'.format(person_id, e))
 
-def ingest_new_people(people_limit=100):
+def ingest_new_people(people_limit=500):
     total_people_to_ingest = get_new_people()
     people_to_ingest = total_people_to_ingest[:people_limit]
     print('In total, there are {} new people to ingest - ingesting {}'.format(len(total_people_to_ingest), len(people_to_ingest)))

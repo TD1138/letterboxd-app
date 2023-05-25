@@ -106,10 +106,10 @@ def correct_tmdb_metadata_errors(film_ids=None, refresh=False, dryrun=False, fil
     successful_films = len(films_to_correct) - errors
     print('Corrected tmdb metadata for {} films ({:.2%})'.format(successful_films, successful_films/len(films_to_correct)))
 
-def correct_all_errors(film_ids=None, refresh=False, dryrun=False, film_limit=1000):
+def correct_all_errors(film_ids=None, refresh=False, dryrun=False, film_limit=100):
     correct_letterboxd_metadata_errors(film_ids, refresh=refresh, dryrun=dryrun, film_limit=film_limit)
     correct_ext_ids_plus_content_type_errors(film_ids, refresh=refresh, dryrun=dryrun, film_limit=film_limit)
-    correct_tmdb_metadata_errors(film_ids, refresh=refresh, dryrun=dryrun, film_limit=film_limit)
+    correct_tmdb_metadata_errors(film_ids, refresh=refresh, dryrun=dryrun, film_limit=film_limit*10)
 
 title_select_statement = ("""
 
