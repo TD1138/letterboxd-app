@@ -196,6 +196,45 @@ ORDER BY FILM_GENRE DESC
 
 """
 
+director_completion_query = """
+
+WITH BASE_TABLE AS (
+	
+	SELECT
+		 a.FILM_ID
+		,d.FILM_TITLE
+		,b.FILM_GENRE
+		,CASE WHEN c.FILM_ID IS NULL THEN 0 ELSE 1 END AS WATCHED
+
+	FROM ALL_RELEASED_FILMS a
+	
+	LEFT JOIN FILM_GENRE b
+	ON a.FILM_ID = b.FILM_ID
+	
+	LEFT JOIN WATCHED c
+	ON a.FILM_ID = c.FILM_ID
+	
+	LEFT JOIN FILM_TITLE d
+	ON a.FILM_ID = d.FILM_ID
+
+    WHERE b.FILM_GENRE != 'studiogenre-films'
+    
+	)
+	
+SELECT
+	
+	 FILM_GENRE
+    ,SUM(WATCHED) AS FILMS_WATCHED
+	,COUNT(*) AS TOTAL_FILMS
+	,AVG(WATCHED) AS PERCENT_WATCHED
+	
+FROM BASE_TABLE
+
+GROUP BY FILM_GENRE
+ORDER BY FILM_GENRE DESC
+
+"""
+
 film_score_query = """
 
 SELECT
@@ -308,6 +347,7 @@ df_scaled['SCORE_WEIGHTED'] =                \
 df_scaled = scale_col(df_scaled, 'SCORE_WEIGHTED', a=0, b=100)
 df2 = df.merge(df_scaled[['FILM_ID', 'SCORE_WEIGHTED']], how='left', on='FILM_ID')
 df_sorted = df2.sort_values('SCORE_WEIGHTED', ascending=False)
+# df_sorted['FILM_YEAR'] = df_sorted['FILM_YEAR'].dt.strftime("%Y")
 year_df = select_statement_to_df(year_completion_query)
 genre_df = select_statement_to_df(genre_completion_query)
 film_score_df = select_statement_to_df(film_score_query)
@@ -320,7 +360,7 @@ diary_query_df2['MOVIE_COUNT_ROLLING_28'] = diary_query_df2['MOVIE_COUNT'].rolli
 diary_query_df2['MOVIE_RATING_ROLLING_7'] = diary_query_df2['MOVIE_RATING'].rolling(window=7).mean()
 diary_query_df2['MOVIE_RATING_ROLLING_28'] = diary_query_df2['MOVIE_RATING'].rolling(window=28).mean()
 
-st.write(diary_query_df2)
+# st.write(diary_query_df2)
 st.line_chart(data=diary_query_df2, x="WATCH_DATE", y=["MOVIE_COUNT_ROLLING_7", "MOVIE_COUNT_ROLLING_28"])
 st.line_chart(data=diary_query_df2, x="WATCH_DATE", y=["MOVIE_RATING_ROLLING_7", "MOVIE_RATING_ROLLING_28"])
 st.line_chart(data=diary_query_df2, x="WATCH_DATE", y=["MOVIE_COUNT_ROLLING_7", "MOVIE_COUNT_ROLLING_28", "MOVIE_RATING_ROLLING_7", "MOVIE_RATING_ROLLING_28"])

@@ -34,12 +34,12 @@ LIMIT 100
 # update_oldest_records(film_limit=10, dryrun=False)
 # refresh_core_tables()
 
-# ingest_film('f_020Z2')
+# ingest_film('f_01Wgi')
 # update_oldest_streaming_records(['f_0jxmG'])
 
-# correct_all_errors(film_ids=None, refresh=False, dryrun=False, film_limit=100)
+correct_all_errors(film_ids=None, refresh=False, dryrun=False, film_limit=999)
 # correct_all_errors(film_ids=['f_0jY7I'])
 
-ingest_new_people(10000)
+# ingest_new_people(10000)
 
 
