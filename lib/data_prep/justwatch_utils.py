@@ -23,17 +23,22 @@ def update_streaming_info(film_id):
         if first_result.get('title') == get_from_table('FILM_TITLE', film_id, 'FILM_TITLE'):
             provider_abbreviations = list(set([x['package_short_name'] for x in first_result.get('offers', []) if x['monetization_type'] in ['flatrate', 'free', 'ads']]))
             valid_abbr = [x for x in provider_abbreviations if x in my_streaming_services_abbr]
-            valid_abbr.append('rent')
-            rental_prices = [x['retail_price'] for x in first_result.get('offers', []) if x['monetization_type'] == 'rent' and x['presentation_type'] == 'hd' and x.get('retail_price', False)]
-            if len(rental_prices) > 0:
-                min_rental_price = min(rental_prices)
-            else:
-                min_rental_price = None
+            min_rental_price = 0
+            valid = 1
+            if len(valid_abbr) == 0:
+                valid_abbr = ['rent']
+                rental_prices = [x['retail_price'] for x in first_result.get('offers', []) if x['monetization_type'] == 'rent' and x['presentation_type'] == 'hd' and x.get('retail_price', False)]
+                if len(rental_prices) > 0:
+                    min_rental_price = min(rental_prices)
+                else:
+                    min_rental_price = None
+                    valid = 0
             valid_full = [abbr_to_full_dict.get(x) for x in valid_abbr]
             film_streaming_services_df = pd.DataFrame(index=range(len(valid_abbr)))
             film_streaming_services_df['FILM_ID'] = film_id
             film_streaming_services_df['STREAMING_SERVICE_ABBR'] = valid_abbr
             film_streaming_services_df['STREAMING_SERVICE_FULL'] = valid_full
-            film_streaming_services_df['PRICE'] = np.where(film_streaming_services_df['STREAMING_SERVICE_ABBR']=='rent', min_rental_price, 0)
             film_streaming_services_df['CREATED_AT'] = datetime.now()
+            film_streaming_services_df['PRICE'] = min_rental_price
+            film_streaming_services_df['VALID'] = valid
             df_to_table(film_streaming_services_df, 'FILM_STREAMING_SERVICES', replace_append='append', verbose=False)

@@ -4,7 +4,7 @@ import pandas as pd
 import sqlite3 as sql
 from datetime import datetime
 import dotenv
-dotenv.load_dotenv()
+dotenv.load_dotenv(override=True)
 
 def set_working_db(db_name):
     local_db_path = os.getenv('PROJECT_PATH') + '/db/' + db_name

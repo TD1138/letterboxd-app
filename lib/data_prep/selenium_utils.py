@@ -7,7 +7,7 @@ from selenium.webdriver.common.by import By
 import chromedriver_autoinstaller
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 def download_letterboxd_zip(hide_actions=True):
     try:

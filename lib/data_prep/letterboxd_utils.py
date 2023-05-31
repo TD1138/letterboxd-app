@@ -100,6 +100,7 @@ def update_letterboxd_stats(film_id):
         'FILM_RATING_COUNT': rating_count,
         'CREATED_AT': datetime.now()
     }
+    # import ipdb; ipdb.set_trace()
     insert_record_into_table(letterboxd_info_dict, 'FILM_LETTERBOXD_STATS')
 
 def get_ext_ids_plus_content_type(film_id):
@@ -128,7 +129,6 @@ def get_ext_ids_plus_content_type(film_id):
         tmdb_id = None
         content_type = None
         tmdb_valid = 0
-
     try:
         imdb_url = soup.find('a', {'data-track-action': 'IMDb'}).get('href')
         imdb_id = imdb_url.replace('http://www.imdb.com/title/', '').replace('/maindetails', '')

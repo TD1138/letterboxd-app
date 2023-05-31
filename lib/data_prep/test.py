@@ -5,17 +5,18 @@ from sqlite_utils import get_from_table, get_film_ids_from_select_statement
 from tmdb_utils import get_tmbd_metadata, update_tmdb_stats
 from error_utils import correct_tmdb_metadata_errors, correct_all_errors
 from update_utils import update_oldest_records, update_oldest_streaming_records
+import sys
+
+print(sys.argv)
 
 select_statement = ("""
 
 SELECT *
-FROM FILM_LETTERBOXD_STATS
-ORDER BY FILM_WATCH_COUNT DESC
-LIMIT 100
+FROM FILMS_AVAILABLE_TO_STREAM
 
 """)
 
-# films_to_ingest = get_film_ids_from_select_statement(select_statement)
+films_to_ingest = get_film_ids_from_select_statement(select_statement)
 # # films_to_ingest = get_film_ids_from_select_statement("SELECT * FROM FILM_RELEASE_INFO WHERE FILM_STATUS = 'Ended' OR FILM_STATUS = 'Returning Series'")
 # # films_to_ingest = get_all_films()
 # # films_to_ingest = ['f_0hK9G'] # OVERRIDE TO DEBUG SPECIFIC FILMS
@@ -35,10 +36,10 @@ LIMIT 100
 # refresh_core_tables()
 
 # ingest_film('f_01Wgi')
-# update_oldest_streaming_records(['f_0jxmG'])
+# update_oldest_streaming_records(films_to_ingest, 5000)
 
-correct_all_errors(film_ids=None, refresh=False, dryrun=False, film_limit=999)
-# correct_all_errors(film_ids=['f_0jY7I'])
+# correct_all_errors(film_ids=None, refresh=False, dryrun=False, film_limit=999)
+# correct_all_errors(film_ids=['f_0fBkw'])
 
 # ingest_new_people(10000)
 

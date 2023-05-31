@@ -5,7 +5,7 @@ from tmdb_utils import update_tmbd_metadata
 from letterboxd_utils import get_ext_ids_plus_content_type, get_metadata_from_letterboxd, update_letterboxd_stats
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 def correct_letterboxd_stats_errors(film_ids=None, refresh=False, dryrun=False, film_limit=1000):
     if film_ids:
@@ -17,7 +17,7 @@ def correct_letterboxd_stats_errors(film_ids=None, refresh=False, dryrun=False, 
             letterboxd_stats_films_to_correct \
             ))
         films_to_correct = total_films_to_correct[:film_limit]
-    print('In total, there are {} new films to correct letterboxd metadata for - correcting {}'.format(len(total_films_to_correct), len(films_to_correct)))
+    print('In total, there are {} new films to correct letterboxd stats for - correcting {}'.format(len(total_films_to_correct), len(films_to_correct)))
     if dryrun:
         print(films_to_correct[:10])
         return
@@ -138,7 +138,7 @@ def correct_tmdb_metadata_errors(film_ids=None, refresh=False, dryrun=False, fil
     print('Corrected tmdb metadata for {} films ({:.2%})'.format(successful_films, successful_films/len(films_to_correct)))
 
 def correct_all_errors(film_ids=None, refresh=False, dryrun=False, film_limit=100):
-    load_dotenv()
+    load_dotenv(override=True)
     correct_letterboxd_stats_errors(film_ids, refresh=refresh, dryrun=dryrun, film_limit=film_limit)
     correct_letterboxd_metadata_errors(film_ids, refresh=refresh, dryrun=dryrun, film_limit=film_limit)
     correct_ext_ids_plus_content_type_errors(film_ids, refresh=refresh, dryrun=dryrun, film_limit=film_limit)
@@ -298,12 +298,8 @@ FROM ALL_RELEASED_FILMS a
 LEFT JOIN FILM_LETTERBOXD_STATS b
 ON a.FILM_ID = b.FILM_ID
 
-LEFT JOIN TMDB_ID c
-ON a.FILM_ID = c.FILM_ID
-
 WHERE COALESCE(b.FILM_WATCH_COUNT, 0) = 0
-AND DAYS_SINCE_LAST_UPDATE > 7
-AND c.VALID = 1
+--AND DAYS_SINCE_LAST_UPDATE > 7
 
 """)
 

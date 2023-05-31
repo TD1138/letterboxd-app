@@ -5,15 +5,10 @@ from error_utils import correct_all_errors
 from update_utils import update_oldest_records
 import sys
 
-try:
+if len(sys.argv) > 1:
     if sys.argv[1] == 'nozip':
         print('Proceeding with daily update with no download of letterboxd zip file')
-    else:
-        download_letterboxd_zip(hide_actions=True)
-        unzip_letterboxd_downloads()
-        set_latest_export()
-        refresh_core_tables()
-except:
+else:
     download_letterboxd_zip(hide_actions=True)
     unzip_letterboxd_downloads()
     set_latest_export()

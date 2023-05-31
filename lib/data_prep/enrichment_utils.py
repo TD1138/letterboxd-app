@@ -7,7 +7,7 @@ from tmdb_utils import get_tmbd_metadata, get_person_metadata
 from justwatch_utils import update_streaming_info
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 def get_all_films():
     watched_df = exportfile_to_df('watched.csv')
@@ -55,7 +55,7 @@ def ingest_film(film_id):
     update_ingestion_table(film_id)
 
 def ingest_new_films(film_limit=100):
-    load_dotenv()
+    load_dotenv(override=True)
     total_films_to_ingest = get_new_films()
     films_to_ingest = total_films_to_ingest[:film_limit]
     print('In total, there are {} new films to ingest - ingesting {}'.format(len(total_films_to_ingest), len(films_to_ingest)))
@@ -76,7 +76,7 @@ def ingest_person(person_id):
         print('Update of Person metadata for {} failed ({})'.format(person_id, e))
 
 def ingest_new_people(people_limit=500):
-    load_dotenv()
+    load_dotenv(override=True)
     total_people_to_ingest = get_new_people()
     people_to_ingest = total_people_to_ingest[:people_limit]
     print('In total, there are {} new people to ingest - ingesting {}'.format(len(total_people_to_ingest), len(people_to_ingest)))

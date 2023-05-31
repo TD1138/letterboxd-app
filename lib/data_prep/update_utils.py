@@ -6,7 +6,7 @@ from tmdb_utils import update_tmbd_metadata
 from letterboxd_utils import update_letterboxd_stats
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 def update_oldest_letterboxd_stats_records(film_ids=None, film_limit=100, dryrun=False):
     if film_ids:
@@ -57,7 +57,7 @@ def update_oldest_streaming_records(film_ids=None, film_limit=100, dryrun=False)
                 break
 
 def update_oldest_records(film_ids=None, film_limit=100, dryrun=False):
-    load_dotenv()
+    load_dotenv(override=True)
     update_oldest_letterboxd_stats_records(film_ids=film_ids, film_limit=int(film_limit/10), dryrun=dryrun)
     update_oldest_tmdb_metadata_records(film_ids=film_ids, film_limit=film_limit, dryrun=dryrun)
     update_oldest_streaming_records(film_ids=film_ids, film_limit=film_limit*10, dryrun=dryrun)

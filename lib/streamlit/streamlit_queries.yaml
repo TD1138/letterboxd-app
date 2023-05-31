@@ -1,0 +1,303 @@
+# queries.yaml
+watchlist_query:
+  sql: |
+
+    WITH BASE_TABLE AS (
+    
+      SELECT
+      
+        a.FILM_ID
+        ,c.FILM_TITLE
+        ,d.FILM_GENRE
+        ,e.FILM_RATING
+        ,f.FILM_RATING_SCALED
+        ,CASE WHEN f.FILM_RATING_SCALED IS NOT NULL THEN 1 ELSE 0 END AS RATED
+      
+      FROM ALL_FILMS a
+      LEFT JOIN CONTENT_TYPE b
+      ON a.FILM_ID = b.FILM_ID
+      LEFT JOIN FILM_TITLE c
+      ON a.FILM_ID = c.FILM_ID
+      LEFT JOIN FILM_GENRE d
+      ON a.FILM_ID = d.FILM_ID
+      LEFT JOIN FILM_LETTERBOXD_STATS e
+      ON a.FILM_ID = e.FILM_ID
+      LEFT JOIN PERSONAL_RATING f
+      ON a.FILM_ID = f.FILM_ID
+      
+      WHERE CONTENT_TYPE = 'movie'
+      
+    )
+        
+    , GENRE_SCORE AS (
+    
+      SELECT
+    
+        FILM_GENRE
+        ,AVG(FILM_RATING) AS MEAN_RATING
+        ,AVG(FILM_RATING_SCALED) AS MY_MEAN_RATING
+        ,AVG(FILM_RATING_SCALED) - AVG(FILM_RATING) AS MY_VARIANCE
+        ,((AVG(FILM_RATING_SCALED) - AVG(FILM_RATING)) * ((SUM(RATED)+0.0)/COUNT(*))) AS VARIANCE_SCORE
+        ,COUNT(*) AS FILM_COUNT
+        ,SUM(RATED) AS RATED_FILM_COUNT
+        ,(SUM(RATED)+0.0)/COUNT(*) AS SCALER
+    
+      FROM BASE_TABLE
+    
+      GROUP BY FILM_GENRE
+    
+    )
+    
+    , STREAMING_CONCAT AS (
+    
+      SELECT
+        
+        FILM_ID
+        ,GROUP_CONCAT(STREAMING_SERVICE_FULL, ', ') AS STREAMING_SERVICES
+        ,MIN(CASE WHEN STREAMING_SERVICE_ABBR = 'rent' THEN PRICE END) AS MIN_RENTAL_PRICE
+      
+      FROM FILM_STREAMING_SERVICES
+      
+      GROUP BY FILM_ID
+    
+    )
+    
+    SELECT
+
+      a.FILM_ID
+      ,b.FILM_TITLE
+      ,b.LETTERBOXD_URL
+      ,a.SEEN
+      ,c.FILM_WATCH_COUNT
+      ,c.FILM_TOP_250
+      ,c.FILM_RATING
+      ,c.FILM_LIKES_COUNT
+      ,c.FILM_FAN_COUNT
+      ,CASE WHEN d.FILM_ID IS NULL THEN 'No' ELSE 'Yes' END AS STREAMING
+      ,j.STREAMING_SERVICES
+      ,CASE WHEN j.MIN_RENTAL_PRICE IS NULL THEN 'No' ELSE 'Yes' END AS RENTABLE
+      ,CASE WHEN d.FILM_ID IS NOT NULL OR j.MIN_RENTAL_PRICE IS NOT NULL THEN 'Yes' ELSE 'No' END AS WATCHABLE
+      ,j.MIN_RENTAL_PRICE
+      ,e.FILM_RUNTIME
+      ,k.FILM_DECADE
+      ,k.FILM_YEAR
+      ,g.FILM_GENRE
+      ,COALESCE(i.VARIANCE_SCORE, 0) AS GENRE_SCORE
+    
+    FROM EXPANDED_WATCHLIST a
+    LEFT JOIN FILM_TITLE b
+    ON a.FILM_ID = b.FILM_ID
+    LEFT JOIN FILM_LETTERBOXD_STATS c
+    ON a.FILM_ID = c.FILM_ID
+    LEFT JOIN FILMS_AVAILABLE_TO_STREAM d
+    ON a.FILM_ID = d.FILM_ID
+    LEFT JOIN FILM_RUNTIME e
+    ON a.FILM_ID = e.FILM_ID
+    LEFT JOIN CONTENT_TYPE f
+    ON a.FILM_ID = f.FILM_ID
+    LEFT JOIN FILM_GENRE g
+    ON a.FILM_ID = g.FILM_ID
+    LEFT JOIN FILM_RELEASE_INFO h
+    ON a.FILM_ID = h.FILM_ID
+    LEFT JOIN GENRE_SCORE i
+    ON g.FILM_GENRE = i.FILM_GENRE
+    LEFT JOIN STREAMING_CONCAT j
+    ON a.FILM_ID = j.FILM_ID
+    LEFT JOIN FILM_YEAR k
+    ON a.FILM_ID = k.FILM_ID
+    LEFT JOIN FILM_COLLECTIONS_VALID l
+    ON a.FILM_ID = l.FILM_ID
+    LEFT JOIN COLLECTION_STATS m
+    ON l.COLLECTION_ID = m.COLLECTION_ID
+    
+    WHERE f.CONTENT_TYPE = 'movie'
+    AND h.FILM_STATUS = 'Released'
+    AND a.FILM_ID != 'f_08E3a'
+    AND e.FILM_RUNTIME < 300
+    AND e.FILM_RUNTIME > 59
+    AND g.FILM_GENRE != 'tv-movie'
+    AND g.FILM_GENRE != 'documentary'
+    AND COALESCE(l.COLLECTION_NUM, 0) <= COALESCE(m.MAX_WATCHED, 0) + 1;
+
+
+year_completion_query:
+  sql: |
+
+    WITH BASE_TABLE AS (
+
+      SELECT
+        a.FILM_ID
+        ,d.FILM_TITLE
+        ,b.FILM_YEAR
+        ,CASE WHEN c.FILM_ID IS NULL THEN 0 ELSE 1 END AS WATCHED
+      
+      FROM ALL_FEATURE_FILMS a
+      
+      LEFT JOIN FILM_YEAR b
+      ON a.FILM_ID = b.FILM_ID
+      
+      LEFT JOIN WATCHED c
+      ON a.FILM_ID = c.FILM_ID
+      
+      LEFT JOIN FILM_TITLE d
+      ON a.FILM_ID = d.FILM_ID
+    
+    )
+
+    SELECT
+   
+        FILM_YEAR
+        ,SUM(WATCHED) AS FILMS_WATCHED
+        ,COUNT(*) AS TOTAL_FILMS
+        ,AVG(WATCHED) AS PERCENT_WATCHED
+
+    FROM BASE_TABLE
+
+    GROUP BY FILM_YEAR
+
+    ORDER BY FILM_YEAR DESC
+
+genre_completion_query:
+  sql: |
+    WITH BASE_TABLE AS (
+
+      SELECT
+
+        a.FILM_ID
+        ,d.FILM_TITLE
+        ,b.FILM_GENRE
+        ,CASE WHEN c.FILM_ID IS NULL THEN 0 ELSE 1 END AS WATCHED
+    
+      FROM ALL_FEATURE_FILMS a
+      
+      LEFT JOIN FILM_GENRE b
+      ON a.FILM_ID = b.FILM_ID
+      
+      LEFT JOIN WATCHED c
+      ON a.FILM_ID = c.FILM_ID
+      
+      LEFT JOIN FILM_TITLE d
+      ON a.FILM_ID = d.FILM_ID
+    
+      --WHERE b.FILM_GENRE != 'studiogenre-films'
+        
+      )
+      
+    SELECT
+      
+      FILM_GENRE
+      ,SUM(WATCHED) AS FILMS_WATCHED
+      ,COUNT(*) AS TOTAL_FILMS
+      ,AVG(WATCHED) AS PERCENT_WATCHED
+      
+    FROM BASE_TABLE
+    
+    GROUP BY FILM_GENRE
+
+    ORDER BY FILM_GENRE DESC
+
+director_completion_query:
+  sql: |
+    WITH BASE_TABLE AS (
+
+      SELECT
+
+        a.FILM_ID
+        ,d.FILM_TITLE
+        ,b.PERSON_ID
+        ,e.PERSON_NAME AS DIRECTOR_NAME
+        ,CASE WHEN c.FILM_ID IS NULL THEN 0 ELSE 1 END AS WATCHED
+    
+      FROM ALL_FEATURE_FILMS a
+      
+      LEFT JOIN FILM_CREW b
+      ON a.FILM_ID = b.FILM_ID
+      
+      LEFT JOIN WATCHED c
+      ON a.FILM_ID = c.FILM_ID
+      
+      LEFT JOIN FILM_TITLE d
+      ON a.FILM_ID = d.FILM_ID
+
+      LEFT JOIN PERSON_INFO e
+      ON b.PERSON_ID = e.PERSON_ID
+    
+      WHERE b.JOB = 'Director'
+        
+      )
+      
+    SELECT
+      
+      DIRECTOR_NAME
+      ,SUM(WATCHED) AS FILMS_WATCHED
+      ,COUNT(*) AS TOTAL_FILMS
+      ,AVG(WATCHED) AS PERCENT_WATCHED
+      
+    FROM BASE_TABLE
+    
+    GROUP BY DIRECTOR_NAME
+
+    HAVING TOTAL_FILMS >= 3 AND FILMS_WATCHED >= 1
+
+    ORDER BY PERCENT_WATCHED DESC, FILMS_WATCHED DESC
+
+film_score_query:
+  sql: |
+  
+    SELECT
+
+      a.FILM_ID
+      ,b.FILM_TITLE
+      ,f.FILM_GENRE
+      ,g.FILM_WATCH_COUNT
+      ,g.FILM_RATING
+      ,ROUND(g.FILM_WATCH_COUNT * g.FILM_RATING * 100 / (2500000*5), 1) AS FILM_SCORE
+      ,CASE WHEN c.FILM_ID IS NULL THEN 0 ELSE 1 END AS WATCHED
+      ,CASE WHEN d.FILM_ID IS NULL THEN 'No' ELSE 'Yes' END AS STREAMING
+      ,e.STREAMING_SERVICES
+    
+
+    FROM EXPANDED_WATCHLIST a
+    
+    LEFT JOIN FILM_TITLE b
+    ON a.FILM_ID = b.FILM_ID
+    
+    LEFT JOIN WATCHED c
+    ON a.FILM_ID = c.FILM_ID
+    
+    LEFT JOIN FILMS_AVAILABLE_TO_STREAM d
+    ON a.FILM_ID = d.FILM_ID
+    
+    LEFT JOIN
+      (
+        SELECT
+          FILM_ID
+          ,GROUP_CONCAT(STREAMING_SERVICE_FULL, ', ') AS STREAMING_SERVICES
+        FROM FILM_STREAMING_SERVICES GROUP BY FILM_ID
+      ) e
+    ON a.FILM_ID = e.FILM_ID
+    
+    LEFT JOIN FILM_GENRE f
+    ON a.FILM_ID = f.FILM_ID
+    
+    LEFT JOIN FILM_LETTERBOXD_STATS g
+    ON a.FILM_ID = g.FILM_ID
+    
+    WHERE b.FILM_TITLE IS NOT NULL
+    
+    ORDER BY g.FILM_WATCH_COUNT DESC
+
+diary_query_basic:
+  sql: |
+
+    SELECT
+   
+      WATCH_DATE
+      ,SUM(IS_NARRATIVE_FEATURE) AS MOVIE_COUNT
+      ,AVG(CASE WHEN IS_NARRATIVE_FEATURE = 1 THEN FILM_RATING END) AS MOVIE_RATING
+    
+    FROM DIARY
+    
+    GROUP BY WATCH_DATE
+    
+    ORDER BY WATCH_DATE ASC

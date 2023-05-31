@@ -5,7 +5,7 @@ from tmdbv3api import TMDb, Movie, TV, Person
 from sqlite_utils import get_from_table, delete_records, insert_record_into_table, df_to_table, replace_record, update_record
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 tmdb_api_key = os.getenv('TMDB_API_KEY')
 tmdb = TMDb()
