@@ -6,6 +6,9 @@ from update_utils import update_oldest_records
 from algo_utils import run_algo
 import sys
 
+import warnings
+warnings.filterwarnings("ignore")
+
 if len(sys.argv) > 1:
     if sys.argv[1] == 'nozip':
         print('Proceeding with daily update with no download of letterboxd zip file')
@@ -14,7 +17,7 @@ else:
     unzip_letterboxd_downloads()
     set_latest_export()
     refresh_core_tables()
-ingest_new_films()
+ingest_new_films(film_limit=300)
 ingest_new_people()
 correct_all_errors()
 update_oldest_records()

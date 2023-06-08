@@ -1,8 +1,10 @@
+import numpy as np
 import pandas as pd
 from xgboost import XGBRegressor
-from sqlite_utils import select_statement_to_df, df_to_table
+from sqlite_utils import select_statement_to_df, df_to_table, table_to_df
+import shap
 
-eligible_watchlist_query = """
+all_features_query = """
 
 WITH BASE_TABLE AS (
     
@@ -30,84 +32,31 @@ WITH BASE_TABLE AS (
       WHERE CONTENT_TYPE = 'movie'
       
     )
-        
-    , GENRE_SCORE AS (
-    
-      SELECT
-    
-        FILM_GENRE
-        ,AVG(FILM_RATING) AS MEAN_RATING
-        ,AVG(FILM_RATING_SCALED) AS MY_MEAN_RATING
-        ,AVG(FILM_RATING_SCALED) - AVG(FILM_RATING) AS MY_VARIANCE
-        ,((AVG(FILM_RATING_SCALED) - AVG(FILM_RATING)) * ((SUM(RATED)+0.0)/COUNT(*))) AS VARIANCE_SCORE
-        ,COUNT(*) AS FILM_COUNT
-        ,SUM(RATED) AS RATED_FILM_COUNT
-        ,(SUM(RATED)+0.0)/COUNT(*) AS SCALER
-    
-      FROM BASE_TABLE
-    
-      GROUP BY FILM_GENRE
-    
-    )
-    
-    , STREAMING_CONCAT AS (
-    
-      SELECT
-        
-        FILM_ID
-        ,GROUP_CONCAT(STREAMING_SERVICE_FULL, ', ') AS STREAMING_SERVICES
-        ,MIN(CASE WHEN STREAMING_SERVICE_ABBR = 'rent' THEN PRICE END) AS MIN_RENTAL_PRICE
-      
-      FROM FILM_STREAMING_SERVICES
-      
-      GROUP BY FILM_ID
-    
-    )
    
     SELECT
 
       a.FILM_ID
       ,b.FILM_TITLE
-      ,b.LETTERBOXD_URL
       ,c.FILM_WATCH_COUNT
       ,c.FILM_TOP_250
       ,c.FILM_RATING
-      ,c.FILM_LIKES_COUNT
-      ,c.FILM_FAN_COUNT
-      ,CASE WHEN d.FILM_ID IS NULL THEN 'No' ELSE 'Yes' END AS STREAMING
-      ,h.STREAMING_SERVICES
-      ,CASE WHEN h.MIN_RENTAL_PRICE IS NULL THEN 'No' ELSE 'Yes' END AS RENTABLE
-      ,CASE WHEN d.FILM_ID IS NOT NULL OR h.MIN_RENTAL_PRICE IS NOT NULL THEN 'Yes' ELSE 'No' END AS WATCHABLE
-      ,h.MIN_RENTAL_PRICE
-      ,e.FILM_RUNTIME
-      ,i.FILM_DECADE
-      ,i.FILM_YEAR
-      ,f.FILM_GENRE
-      ,COALESCE(g.VARIANCE_SCORE, 0) AS GENRE_SCORE
+      ,COALESCE(1.0*c.FILM_LIKES_COUNT/c.FILM_WATCH_COUNT, 0.0) AS LIKES_PER_WATCH
+      ,COALESCE(1.0*c.FILM_FAN_COUNT/c.FILM_WATCH_COUNT, 0.0) AS FANS_PER_WATCH
+      ,d.FILM_RUNTIME
+      ,f.FILM_YEAR
+      ,e.ALL_FILM_GENRES
     
     FROM ALL_FEATURE_FILMS a
     LEFT JOIN FILM_TITLE b
     ON a.FILM_ID = b.FILM_ID
     LEFT JOIN FILM_LETTERBOXD_STATS c
     ON a.FILM_ID = c.FILM_ID
-    LEFT JOIN FILMS_AVAILABLE_TO_STREAM d
+    LEFT JOIN FILM_RUNTIME d
     ON a.FILM_ID = d.FILM_ID
-    LEFT JOIN FILM_RUNTIME e
+    LEFT JOIN FILM_GENRE e
     ON a.FILM_ID = e.FILM_ID
-    LEFT JOIN FILM_GENRE f
+    LEFT JOIN FILM_YEAR f
     ON a.FILM_ID = f.FILM_ID
-    LEFT JOIN GENRE_SCORE g
-    ON f.FILM_GENRE = g.FILM_GENRE
-    LEFT JOIN STREAMING_CONCAT h
-    ON a.FILM_ID = h.FILM_ID
-    LEFT JOIN FILM_YEAR i
-    ON a.FILM_ID = i.FILM_ID
-    LEFT JOIN FILM_COLLECTIONS_VALID j
-    ON a.FILM_ID = j.FILM_ID
-    LEFT JOIN COLLECTION_STATS k
-    ON j.COLLECTION_ID = k.COLLECTION_ID
-    
-    WHERE COALESCE(j.COLLECTION_NUM, 0) <= COALESCE(k.MAX_WATCHED, 0) + 1;
 
 """
 
@@ -308,67 +257,125 @@ def scale_col(df, column, suffix='', a=0, b=1):
     df[column+suffix] = ((df[column] - col_min) / col_range) * (b - a) + a
     return df
 
-def run_algo():
-
-    eligible_watchlist_df = select_statement_to_df(eligible_watchlist_query)
-
+def run_algo(save_outputs=True, return_outputs=False):
+    print('Gathering data for algo run...')
+    eligible_watchlist_df = select_statement_to_df(all_features_query)
     director_rating_df = select_statement_to_df(director_rating_query)
-
     eligible_watchlist_df = eligible_watchlist_df.merge(director_rating_df, how='left', on='FILM_ID')
-
-    genre_df = eligible_watchlist_df.copy()[['FILM_ID', 'FILM_GENRE']]
-    genre_df['COUNT'] = 1
-    genre_df_wide = pd.pivot_table(genre_df, values='COUNT', index=['FILM_ID'], columns=['FILM_GENRE']).fillna(0).reset_index()
-
-    eligible_watchlist_df = eligible_watchlist_df[['FILM_ID', 'FILM_TITLE', 'FILM_WATCH_COUNT', 'FILM_TOP_250', 'FILM_RATING', 'FILM_LIKES_COUNT', 'FILM_FAN_COUNT', 'FILM_RUNTIME', 'FILM_YEAR', 'DIRECTOR_MEAN_RATING', 'DIRECTOR_TOTAL_FILMS', 'DIRECTOR_PERCENT_WATCHED']].merge(genre_df_wide, how='left', on='FILM_ID')
-
+    eligible_watchlist_df = pd.concat([eligible_watchlist_df, eligible_watchlist_df['ALL_FILM_GENRES'].str.get_dummies(sep='/')], axis=1).drop('ALL_FILM_GENRES', axis=1)
     keyword_df = select_statement_to_df(keyword_query)
     keyword_df['COUNT'] = 1
     keyword_df_wide = pd.pivot_table(keyword_df, values='COUNT', index=['FILM_ID'], columns=['KEYWORD']).fillna(0).reset_index()
-
     eligible_watchlist_df = eligible_watchlist_df.merge(keyword_df_wide, how='left', on='FILM_ID')
-
     eligible_watchlist_df['FILM_TOP_250'] = eligible_watchlist_df['FILM_TOP_250'].fillna(266)
     eligible_watchlist_df['FILM_RATING'] = eligible_watchlist_df['FILM_RATING'].fillna(2.0)
     eligible_watchlist_df = eligible_watchlist_df.fillna(0)
-
     my_rating_df = select_statement_to_df(my_rating_query)
-
     rating_features_df = eligible_watchlist_df.merge(my_rating_df, how='left', on='FILM_ID')
-
     rated_features = rating_features_df[rating_features_df['FILM_RATING_SCALED'].notnull()].reset_index(drop=True)
     unrated_features = rating_features_df[rating_features_df['FILM_RATING_SCALED'].isnull()].reset_index(drop=True)
-
     non_features = ['FILM_ID',
                     'FILM_TITLE',
                     'FILM_RATING_SCALED',
                     'FILM_TOP_250',
-                    'FILM_RUNTIME'
+                    'FILM_RUNTIME',
+                    'FILM_FAN_COUNT'
                     ]
 
-
     model_features = [x for x in unrated_features.columns if x not in non_features]
-
     delete_cols = []
     for col in model_features:
         col_mean = rated_features[col].mean()
         if col_mean <= .01:
             delete_cols.append(col)
     model_features = [x for x in model_features if x not in delete_cols]
-
     target = ['FILM_RATING_SCALED']
-
     X_train = rated_features[model_features]
     y_train = rated_features[target]
-
+    print('Data gathering complete!')
+    print('Training model...')
     xgb_model = XGBRegressor()
     xgb_model.fit(X_train, y_train)
-
+    print('Model train complete!')
+    print('Making predictions...')
     X_pred = unrated_features[model_features]
     pred_df = unrated_features.copy()
     pred_df['ALGO_SCORE'] = xgb_model.predict(X_pred)
+    print('Predictions complete!')
+    pred_df = scale_col(pred_df, 'ALGO_SCORE')
+    if save_outputs:
+        df_to_table(pred_df, 'FILM_ALGO_SCORE', replace_append='replace')
+        print('Predictions saved!')
+    print('Calculating SHAP values...')
+    explainer = shap.TreeExplainer(xgb_model)
+    shap_values = explainer.shap_values(X_pred)
+    explainer_df = pd.DataFrame(shap_values, columns=X_pred.columns)
+    explainer_df.insert(0, 'FILM_ID', pred_df['FILM_ID'])
+    explainer_df.insert(1, 'BASE_VALUE', explainer.expected_value)
+    explainer_df['PREDICTION'] = explainer_df.sum(axis=1)
+    explainer_df = explainer_df.merge(pred_df[['FILM_ID', 'ALGO_SCORE']], how='left', on='FILM_ID')
+    explainer_df['SCALER'] = explainer_df['ALGO_SCORE'] / explainer_df['PREDICTION']
+    explainer_df = explainer_df.drop('FILM_ID', axis=1).mul(explainer_df['SCALER'], axis=0).drop(['ALGO_SCORE', 'SCALER'], axis=1) 
+    explainer_df.insert(0, 'FILM_ID', pred_df['FILM_ID'])
+    explainer_df = explainer_df.loc[:, (explainer_df != 0).any(axis=0)]
+    print('SHAP values calculated!')
+    if save_outputs:
+        df_to_table(explainer_df, 'FILM_SHAP_VALUES', replace_append='replace')
+        print('SHAP values saved!')
+    if return_outputs:
+        return {'pred_df': pred_df, 'shap_df': explainer_df}
 
-    output_df = pred_df.copy()[['FILM_ID', 'ALGO_SCORE']]
-    output_df = scale_col(output_df, 'ALGO_SCORE')
+def get_valid_cols(film_id, shap_df, min_shap_val=0.001):
+    filmid_shap_df = shap_df[shap_df['FILM_ID']==film_id].reset_index(drop=True)
+    valid_cols = []
+    for col in filmid_shap_df.columns:
+        shap_val = filmid_shap_df[col][0]
+        if isinstance(shap_val, str):
+            col_valid = False
+        elif np.isnan(shap_val):
+            col_valid = False
+        elif abs(shap_val) < min_shap_val:
+            col_valid = False
+        elif col == 'BASE_VALUE':
+            col_valid = True
+        else:
+            col_valid = True
+        if col_valid:
+            valid_cols.append(col)
+    return valid_cols
 
-    df_to_table(output_df, 'FILM_ALGO_SCORE', replace_append='replace')
+def create_dual_df(film_id, pred_df, shap_df, valid_cols):
+    film_title = pred_df[pred_df['FILM_ID']==film_id]['FILM_TITLE'].values[0]
+    dual_df = pd.concat([pred_df[pred_df['FILM_ID']==film_id], shap_df[shap_df['FILM_ID']==film_id]])
+    dual_df['FILM_TITLE'] = dual_df['FILM_TITLE'].fillna(film_title)
+    dual_df['ALGO_SCORE'] = dual_df['ALGO_SCORE'].fillna(dual_df['ALGO_SCORE'].max())
+    dual_df = dual_df[valid_cols]
+    dual_df.insert(2, 'INFO', ['FEATURE_VALUE', 'SHAP_VALUE'])
+    dual_df = dual_df.reset_index(drop=True)
+    return dual_df
+
+def return_comparison_df(film_ids, min_shap_val=0.001, decimal_places=3):
+    pred_df = table_to_df(table_name='FILM_ALGO_SCORE')
+    shap_df = table_to_df(table_name='FILM_SHAP_VALUES')
+    valid_cols = [get_valid_cols(x, shap_df, min_shap_val=min_shap_val) for x in film_ids]
+    valid_cols = list(set([col for valid_col_list in valid_cols for col in valid_col_list]))
+    valid_cols = ['FILM_ID', 'FILM_TITLE', 'ALGO_SCORE'] + valid_cols
+    valid_cols = [x for x in pred_df.columns if x in valid_cols]
+    valid_cols.append('BASE_VALUE')
+    all_dfs = []
+    for n, film_id in enumerate(film_ids):
+        dual_df = create_dual_df(film_id, pred_df, shap_df, valid_cols)
+        melted_df = pd.melt(dual_df, id_vars=['FILM_ID', 'FILM_TITLE', 'INFO'])
+        pivoted_df = melted_df.drop('FILM_ID', axis=1).pivot(index='variable', columns=['FILM_TITLE', 'INFO'], values='value').reset_index()
+        pivoted_df.columns = [' '.join(col) for col in pivoted_df.columns]
+        if n > 0:
+            pivoted_df = pivoted_df.drop('variable ', axis=1)
+        all_dfs.append(pivoted_df)
+    comparison_df = pd.concat(all_dfs, axis=1)
+    if len(film_ids) > 1:
+        comparison_df['VAR'] = comparison_df[comparison_df.columns[4]] - comparison_df[comparison_df.columns[2]]
+        comparison_df['ABS_VAR'] = comparison_df['VAR'].abs()
+        comparison_df = comparison_df.sort_values('ABS_VAR', ascending=False)
+    else:
+        comparison_df = comparison_df.sort_values(comparison_df.columns[2], ascending=False)
+    return comparison_df.round(decimal_places)

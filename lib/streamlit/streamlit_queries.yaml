@@ -229,6 +229,44 @@ director_completion_query:
 
     ORDER BY PERCENT_WATCHED DESC, FILMS_WATCHED DESC
 
+director_film_level_query:
+  sql: |
+    SELECT
+
+       d.FILM_TITLE
+      ,e.PERSON_NAME AS DIRECTOR_NAME
+      ,CASE WHEN c.FILM_ID IS NULL THEN 0 ELSE 1 END AS WATCHED
+      ,f.FILM_YEAR
+      ,g.FILM_WATCH_COUNT
+      ,g.FILM_RATING
+  
+    FROM ALL_FEATURE_FILMS a
+    
+    LEFT JOIN FILM_CREW b
+    ON a.FILM_ID = b.FILM_ID
+    
+    LEFT JOIN WATCHED c
+    ON a.FILM_ID = c.FILM_ID
+    
+    LEFT JOIN FILM_TITLE d
+    ON a.FILM_ID = d.FILM_ID
+
+    LEFT JOIN PERSON_INFO e
+    ON b.PERSON_ID = e.PERSON_ID
+
+    LEFT JOIN FILM_YEAR f
+    ON a.FILM_ID = f.FILM_ID
+
+    LEFT JOIN FILM_LETTERBOXD_STATS g
+    ON a.FILM_ID = g.FILM_ID
+
+    LEFT JOIN FILM_RELEASE_INFO h
+    ON a.FILM_ID = h.FILM_ID
+  
+    WHERE b.JOB = 'Director'
+
+    ORDER BY h.FILM_RELEASE_DATE ASC
+
 film_score_query:
   sql: |
   

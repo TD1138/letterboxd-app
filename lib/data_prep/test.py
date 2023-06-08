@@ -5,9 +5,11 @@ from sqlite_utils import get_from_table, get_film_ids_from_select_statement
 from tmdb_utils import get_tmbd_metadata, update_tmdb_stats
 from error_utils import correct_tmdb_metadata_errors, correct_all_errors
 from update_utils import update_oldest_records, update_oldest_streaming_records
+from algo_utils import run_algo
 import sys
 
-print(sys.argv)
+import warnings
+warnings.filterwarnings("ignore")
 
 select_statement = ("""
 
@@ -16,7 +18,7 @@ FROM FILMS_AVAILABLE_TO_STREAM
 
 """)
 
-films_to_ingest = get_film_ids_from_select_statement(select_statement)
+# films_to_ingest = get_film_ids_from_select_statement(select_statement)
 # # films_to_ingest = get_film_ids_from_select_statement("SELECT * FROM FILM_RELEASE_INFO WHERE FILM_STATUS = 'Ended' OR FILM_STATUS = 'Returning Series'")
 # # films_to_ingest = get_all_films()
 # # films_to_ingest = ['f_0hK9G'] # OVERRIDE TO DEBUG SPECIFIC FILMS
@@ -43,4 +45,4 @@ films_to_ingest = get_film_ids_from_select_statement(select_statement)
 
 # ingest_new_people(10000)
 
-
+run_algo()
