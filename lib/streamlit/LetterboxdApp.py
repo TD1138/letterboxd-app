@@ -6,6 +6,7 @@ import plotly.express as px
 import yaml
 import streamlit as st
 from streamlit_extras.dataframe_explorer import dataframe_explorer
+import altair as alt
 import sys
 sys.path.insert(0, '../data_prep')
 from sqlite_utils import select_statement_to_df
@@ -19,6 +20,8 @@ year_completion_query = queries['year_completion_query']['sql']
 genre_completion_query = queries['genre_completion_query']['sql']
 director_completion_query = queries['director_completion_query']['sql']
 director_film_level_query = queries['director_film_level_query']['sql']
+actor_completion_query = queries['actor_completion_query']['sql']
+actor_film_level_query = queries['actor_film_level_query']['sql']
 film_score_query = queries['film_score_query']['sql']
 diary_query_basic = queries['diary_query_basic']['sql']
 
@@ -38,6 +41,8 @@ year_df = select_statement_to_df(year_completion_query)
 genre_df = select_statement_to_df(genre_completion_query)
 director_df = select_statement_to_df(director_completion_query)
 director_film_level_df = select_statement_to_df(director_film_level_query)
+actor_df = select_statement_to_df(actor_completion_query)
+actor_film_level_df = select_statement_to_df(actor_film_level_query)
 
 film_score_df = select_statement_to_df(film_score_query)
 diary_query_df = select_statement_to_df(diary_query_basic)
@@ -126,23 +131,24 @@ df_sorted['SEEN'] = df_sorted['SEEN'].replace({0: 'No', 1: 'Yes'})
 
 df_display = df_sorted[['FILM_TITLE', 'FILM_YEAR', 'ALGO_SCORE', 'SCORE_WEIGHTED', 'STREAMING_SERVICES', 'FILM_WATCH_COUNT', 'FILM_RATING', 'MIN_RENTAL_PRICE']]
 df_scores = df_scaled[['FILM_TITLE', 'FILM_YEAR', 'SEEN_SCORE', 'FILM_WATCH_COUNT', 'FILM_TOP_250', 'FILM_RATING', 'FILM_FAN_COUNT', 'FILM_RUNTIME', 'GENRE_SCORE', 'SCORE_WEIGHTED', 'SCORE_WEIGHTED_SCALED']]
-px_fig = px.scatter(
-    df_sorted,
-    x='FILM_RUNTIME',
-    y='FILM_RATING',
-    size='FILM_WATCH_COUNT',
-    color='SEEN',
-    hover_name='FILM_TITLE',
-    size_max=30,
-    template="plotly_dark"
-)
-px_fig.update_traces(marker_sizemin=10)
 
-watchlist_tab, algo_whiteboard_tab, diary_tab, year_tab, genre_tab, director_tab, filmid_lookup_tab = st.tabs(['Ordered Watchlist', 'Algo Whiteboard', 'Diary Visualisation', 'Year Completion', 'Genre Completion', 'Director Completion', 'FILM_ID Lookup'])
+
+watchlist_tab, algo_whiteboard_tab, diary_tab, year_tab, genre_tab, director_tab, actor_tab, filmid_lookup_tab = st.tabs(['Ordered Watchlist', 'Algo Whiteboard', 'Diary Visualisation', 'Year Completion', 'Genre Completion', 'Director Completion', 'Actor Completion', 'FILM_ID Lookup'])
 # save
 with watchlist_tab:
     st.dataframe(df_display, use_container_width=True, hide_index=True)
     # st.dataframe(df)
+    px_fig = px.scatter(
+        df_sorted,
+        x='FILM_RUNTIME',
+        y='ALGO_SCORE',
+        size='FILM_WATCH_COUNT',
+        color='SEEN',
+        hover_name='FILM_TITLE',
+        size_max=30,
+        template="plotly_dark"
+        )
+    px_fig.update_traces(marker_sizemin=10)
     st.plotly_chart(px_fig, theme="streamlit", use_container_width=True)
     st.dataframe(df_scores, use_container_width=True, hide_index=True)
     shap_df = df2[['FILM_ID', 'FILM_TITLE', 'ALGO_SCORE']].merge(select_statement_to_df('SELECT * FROM FILM_SHAP_VALUES'), how='left', on='FILM_ID')
@@ -156,26 +162,28 @@ with watchlist_tab:
     tmp_df['FILM_TITLE_YEAR'] = tmp_df['FILM_TITLE'] + ' - ' + tmp_df['FILM_YEAR'].astype(str)
     tmp_df = tmp_df.sort_values('ALGO_SCORE', ascending=False)
     film_name_years = st.multiselect('Select Films:', tmp_df['FILM_TITLE_YEAR'].unique())
-    film_ids = [tmp_df[tmp_df['FILM_TITLE_YEAR']==x]['FILM_ID'].values[0] for x in film_name_years]
-    # st.dataframe(return_comparison_df(film_ids, min_shap_val=0.001, decimal_places=3), hide_index=True, use_container_width=True)
-    film_names = [x[:-7] for x in film_name_years]
-    # film_ids = [tmp_df[tmp_df['FILM_TITLE_YEAR'] == x]['FILM_ID'] for x in film_names]
-    melted_df = pd.melt(shap_df2[shap_df2['FILM_ID'].isin(film_ids)], id_vars=['FILM_ID', 'FILM_TITLE'])
-    valid_melted_df = melted_df[melted_df['value'].abs() > 0.0005].reset_index(drop=True)
-    valid_melted_df = valid_melted_df[valid_melted_df['variable'] != 'BASE_VALUE']
-    # valid_df = valid_melted_df.pivot_table(values='value', index=['FILM_ID', 'FILM_TITLE'], columns='variable').reset_index().drop('FILM_ID', axis=1)
-    transposed_df = valid_melted_df.drop('FILM_ID', axis=1).pivot(index='variable', columns='FILM_TITLE', values='value').reset_index()
-    transposed_df = transposed_df.fillna(0)
-    transposed_df = transposed_df[['variable', *film_names]]
-    if len(film_names) > 1:
-        transposed_df['VAR'] = transposed_df[film_names[1]] - transposed_df[film_names[0]]
-        transposed_df['ABS_VAR'] = (transposed_df[film_names[0]] - transposed_df[film_names[1]]).abs()
-        transposed_df = transposed_df.sort_values('ABS_VAR', ascending=False)
-    else:
-        transposed_df = transposed_df.sort_values(film_names[0], ascending=False)
-    transposed_df.columns = [x.replace('variable', 'FEATURE_NAME') for x in transposed_df.columns]
-    transposed_df = transposed_df.round(3)
-    st.dataframe(transposed_df, hide_index=True)
+    if len(film_name_years) > 0:
+        film_ids = [tmp_df[tmp_df['FILM_TITLE_YEAR']==x]['FILM_ID'].values[0] for x in film_name_years]
+        # st.dataframe(return_comparison_df(film_ids, min_shap_val=0.001, decimal_places=3), hide_index=True, use_container_width=True)
+        film_names = [x[:-7] for x in film_name_years]
+        # film_ids = [tmp_df[tmp_df['FILM_TITLE_YEAR'] == x]['FILM_ID'] for x in film_names]
+        melted_df = pd.melt(shap_df2[shap_df2['FILM_ID'].isin(film_ids)], id_vars=['FILM_ID', 'FILM_TITLE'])
+        valid_melted_df = melted_df[melted_df['value'].abs() > 0.0005].reset_index(drop=True)
+        valid_melted_df = valid_melted_df[valid_melted_df['variable'] != 'BASE_VALUE']
+        # valid_df = valid_melted_df.pivot_table(values='value', index=['FILM_ID', 'FILM_TITLE'], columns='variable').reset_index().drop('FILM_ID', axis=1)
+        transposed_df = valid_melted_df.drop('FILM_ID', axis=1).pivot(index='variable', columns='FILM_TITLE', values='value').reset_index()
+        transposed_df = transposed_df.fillna(0)
+        transposed_df = transposed_df[['variable', *film_names]]
+        if len(film_names) > 1:
+            transposed_df['VAR'] = transposed_df[film_names[1]] - transposed_df[film_names[0]]
+            transposed_df['ABS_VAR'] = (transposed_df[film_names[0]] - transposed_df[film_names[1]]).abs()
+            transposed_df = transposed_df.sort_values('ABS_VAR', ascending=False)
+        else:
+            transposed_df = transposed_df.sort_values(film_names[0], ascending=False)
+        transposed_df.columns = [x.replace('variable', 'FEATURE_NAME') for x in transposed_df.columns]
+        transposed_df = transposed_df.round(3)
+        st.write(film_ids)
+        st.dataframe(transposed_df, hide_index=True)
 
 with algo_whiteboard_tab:
     y_cols= ['SEEN_SCORE', 'FILM_WATCH_COUNT', 'FILM_TOP_250', 'FILM_RATING', 'FILM_FAN_COUNT', 'FILM_RUNTIME', 'GENRE_SCORE']
@@ -248,32 +256,77 @@ with genre_tab:
 with director_tab:
     director_hist = px.histogram(director_df, x="PERCENT_WATCHED", nbins=8, range_x=(0,1.05))
     st.plotly_chart(director_hist, theme='streamlit', use_container_width=True)
-    director_bar = px.bar(director_df.head(50), x='DIRECTOR_NAME', y='PERCENT_WATCHED')
-    director_bar.update_layout(xaxis={'categoryorder': 'total descending'})
-    st.plotly_chart(director_bar, theme='streamlit', use_container_width=True)
-    pop_director_scatter = px.scatter(
-         director_df,
-    	 x='FILMS_WATCHED',
-    	 y='PERCENT_WATCHED',
-    	 hover_name='DIRECTOR_NAME',
-    	 size_max=30,
-    	 template="plotly_dark"
-		)
+    director_watched_bar = px.bar(director_df.head(50), x='DIRECTOR_NAME', y='PERCENT_WATCHED')
+    director_watched_bar.update_layout(xaxis={'categoryorder': 'total descending'})
+    st.plotly_chart(director_watched_bar, theme='streamlit', use_container_width=True)
+    director_rated_bar = px.bar(director_df[director_df['PERCENT_RATED'] > 0].sort_values('PERCENT_RATED', ascending=False).head(50), x='DIRECTOR_NAME', y='PERCENT_RATED')
+    director_rated_bar.update_layout(xaxis={'categoryorder': 'total descending'})
+    st.plotly_chart(director_rated_bar, theme='streamlit', use_container_width=True)
     st.dataframe(director_df, hide_index=True)
     director_scatter = px.scatter(
          director_df,
     	 x='FILMS_WATCHED',
     	 y='PERCENT_WATCHED',
+         size='TOTAL_FILMS',
     	 hover_name='DIRECTOR_NAME',
     	 size_max=30,
     	 template="plotly_dark"
 		)
     st.plotly_chart(director_scatter, theme='streamlit', use_container_width=True)
+    director_watch_rate_scatter = px.scatter(
+         director_df,
+    	 x='PERCENT_WATCHED',
+    	 y='PERCENT_RATED',
+         size='TOTAL_FILMS',
+    	 hover_name='DIRECTOR_NAME',
+    	 size_max=30,
+    	 template="plotly_dark"
+		)
+    st.plotly_chart(director_watch_rate_scatter, theme='streamlit', use_container_width=True)
     director_name = st.selectbox('Enter Director:', director_df['DIRECTOR_NAME'].unique())
-    st.dataframe(director_film_level_df[director_film_level_df['DIRECTOR_NAME'] == director_name], hide_index=True, height=600)
+    director_df_filtered = director_film_level_df[director_film_level_df['DIRECTOR_NAME'] == director_name]
+    st.dataframe(director_df_filtered, hide_index=True, height=600)
+    director_df_filtered_reshaped = pd.melt(director_df_filtered, id_vars=['FILM_TITLE', 'DIRECTOR_NAME'], value_vars=['FILM_RATING', 'FILM_RATING_SCALED'], var_name='RATING_TYPE', value_name='RATING')
+    st.dataframe(director_df_filtered, hide_index=True, height=600)
+    st.line_chart(data=director_df_filtered, x="FILM_TITLE", y=["FILM_RATING", "FILM_RATING_SCALED"])
+    st.write(alt.Chart(director_df_filtered).mark_line().encode(x=alt.X('FILM_TITLE', sort=None), y=["FILM_RATING", "FILM_RATING_SCALED"]))
+
+with actor_tab:
+    actor_hist = px.histogram(actor_df, x="PERCENT_WATCHED", nbins=8, range_x=(0,1.05))
+    st.plotly_chart(actor_hist, theme='streamlit', use_container_width=True)
+    actor_watched_bar = px.bar(actor_df.head(50), x='ACTOR_NAME', y='PERCENT_WATCHED')
+    actor_watched_bar.update_layout(xaxis={'categoryorder': 'total descending'})
+    st.plotly_chart(actor_watched_bar, theme='streamlit', use_container_width=True)
+    actor_rated_bar = px.bar(actor_df[actor_df['PERCENT_RATED'] > 0].sort_values('PERCENT_RATED', ascending=False).head(50), x='ACTOR_NAME', y='PERCENT_RATED')
+    actor_rated_bar.update_layout(xaxis={'categoryorder': 'total descending'})
+    st.plotly_chart(actor_rated_bar, theme='streamlit', use_container_width=True)
+    st.dataframe(actor_df, hide_index=True)
+    actor_scatter = px.scatter(
+         actor_df,
+    	 x='FILMS_WATCHED',
+    	 y='PERCENT_WATCHED',
+         size='TOTAL_FILMS',
+    	 hover_name='ACTOR_NAME',
+    	 size_max=30,
+    	 template="plotly_dark"
+		)
+    st.plotly_chart(actor_scatter, theme='streamlit', use_container_width=True)
+    actor_watch_rate_scatter = px.scatter(
+         actor_df,
+    	 x='TOTAL_FILMS',
+    	 y='PERCENT_RATED',
+         size='TOTAL_FILMS',
+    	 hover_name='ACTOR_NAME',
+    	 size_max=30,
+    	 template="plotly_dark"
+		)
+    st.plotly_chart(actor_watch_rate_scatter, theme='streamlit', use_container_width=True)
+    actor_name = st.selectbox('Enter Actor:', actor_df['ACTOR_NAME'].unique())
+    actor_df_filtered = actor_film_level_df[actor_film_level_df['ACTOR_NAME'] == actor_name]
+    st.dataframe(actor_df_filtered, hide_index=True, height=600)
+    st.line_chart(data=actor_df_filtered, x="FILM_TITLE", y=["FILM_RATING", "FILM_RATING_SCALED"])
         
 with filmid_lookup_tab:
     film_search = st.text_input('Enter Film Name or ID:')
     film_id_df = select_statement_to_df('SELECT * FROM FILM_TITLE WHERE (FILM_ID LIKE "%{}%") OR (FILM_TITLE LIKE "%{}%")'.format(film_search, film_search))
     st.dataframe(film_id_df, hide_index=True)
-    

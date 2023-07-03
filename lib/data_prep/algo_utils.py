@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from xgboost import XGBRegressor
+from sklearn.tree import DecisionTreeRegressor
 from sqlite_utils import select_statement_to_df, df_to_table, table_to_df
 import shap
 
@@ -257,7 +258,8 @@ def scale_col(df, column, suffix='', a=0, b=1):
     df[column+suffix] = ((df[column] - col_min) / col_range) * (b - a) + a
     return df
 
-def run_algo(save_outputs=True, return_outputs=False):
+def run_algo(model_type='xgboost'):
+    assert model_type in ['xgboost', 'decision_tree'], 'model must be one of "s3" or "local" but was passed as {}'.format(model_type)
     print('Gathering data for algo run...')
     eligible_watchlist_df = select_statement_to_df(all_features_query)
     director_rating_df = select_statement_to_df(director_rating_query)
@@ -294,24 +296,31 @@ def run_algo(save_outputs=True, return_outputs=False):
     y_train = rated_features[target]
     print('Data gathering complete!')
     print('Training model...')
-    xgb_model = XGBRegressor()
-    xgb_model.fit(X_train, y_train)
+    if model_type == 'xgboost':
+        model = XGBRegressor()
+    elif model_type == 'decision_tree':
+        model = DecisionTreeRegressor(min_samples_leaf=3)
+    model.fit(X_train, y_train)
     print('Model train complete!')
     print('Making predictions...')
     X_pred = unrated_features[model_features]
     pred_df = unrated_features.copy()
-    pred_df['ALGO_SCORE'] = xgb_model.predict(X_pred)
+    pred_df['ALGO_SCORE'] = model.predict(X_pred)
     print('Predictions complete!')
     pred_df = scale_col(pred_df, 'ALGO_SCORE')
-    if save_outputs:
-        df_to_table(pred_df, 'FILM_ALGO_SCORE', replace_append='replace')
-        print('Predictions saved!')
+    df_to_table(pred_df, 'FILM_ALGO_SCORE', replace_append='replace')
+    print('Predictions saved!')
     print('Calculating SHAP values...')
-    explainer = shap.TreeExplainer(xgb_model)
+    explainer = shap.TreeExplainer(model)
     shap_values = explainer.shap_values(X_pred)
     explainer_df = pd.DataFrame(shap_values, columns=X_pred.columns)
     explainer_df.insert(0, 'FILM_ID', pred_df['FILM_ID'])
-    explainer_df.insert(1, 'BASE_VALUE', explainer.expected_value)
+    # import ipdb; ipdb.set_trace()
+    try:
+        ex = explainer.expected_value[0]
+    except:
+        ex = explainer.expected_value
+    explainer_df.insert(1, 'BASE_VALUE', ex)
     explainer_df['PREDICTION'] = explainer_df.sum(axis=1)
     explainer_df = explainer_df.merge(pred_df[['FILM_ID', 'ALGO_SCORE']], how='left', on='FILM_ID')
     explainer_df['SCALER'] = explainer_df['ALGO_SCORE'] / explainer_df['PREDICTION']
@@ -319,11 +328,8 @@ def run_algo(save_outputs=True, return_outputs=False):
     explainer_df.insert(0, 'FILM_ID', pred_df['FILM_ID'])
     explainer_df = explainer_df.loc[:, (explainer_df != 0).any(axis=0)]
     print('SHAP values calculated!')
-    if save_outputs:
-        df_to_table(explainer_df, 'FILM_SHAP_VALUES', replace_append='replace')
-        print('SHAP values saved!')
-    if return_outputs:
-        return {'pred_df': pred_df, 'shap_df': explainer_df}
+    df_to_table(explainer_df, 'FILM_SHAP_VALUES', replace_append='replace')
+    print('SHAP values saved!')
 
 def get_valid_cols(film_id, shap_df, min_shap_val=0.001):
     filmid_shap_df = shap_df[shap_df['FILM_ID']==film_id].reset_index(drop=True)

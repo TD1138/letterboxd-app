@@ -58,7 +58,7 @@ def update_oldest_streaming_records(film_ids=None, film_limit=100, dryrun=False)
 
 def update_oldest_records(film_ids=None, film_limit=100, dryrun=False):
     load_dotenv(override=True)
-    update_oldest_letterboxd_stats_records(film_ids=film_ids, film_limit=int(film_limit/10), dryrun=dryrun)
+    update_oldest_letterboxd_stats_records(film_ids=film_ids, film_limit=film_limit, dryrun=dryrun)
     update_oldest_tmdb_metadata_records(film_ids=film_ids, film_limit=film_limit, dryrun=dryrun)
     update_oldest_streaming_records(film_ids=film_ids, film_limit=film_limit*10, dryrun=dryrun)
 

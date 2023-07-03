@@ -17,7 +17,7 @@ else:
     unzip_letterboxd_downloads()
     set_latest_export()
     refresh_core_tables()
-ingest_new_films(film_limit=300)
+ingest_new_films()
 ingest_new_people()
 correct_all_errors()
 update_oldest_records()

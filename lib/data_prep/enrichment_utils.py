@@ -39,17 +39,17 @@ def get_new_films():
     new_film_ids = sample(new_film_ids, len(new_film_ids))
     return new_film_ids
 
-def ingest_film(film_id):
+def ingest_film(film_id, verbose=False):
     try:
-        update_all_letterboxd_info(film_id)
+        update_all_letterboxd_info(film_id, verbose=verbose)
     except Exception as e:
         print('Update of Letterboxd info for {} failed ({})'.format(film_id, e))
     try:
-        get_tmbd_metadata(film_id)
+        get_tmbd_metadata(film_id, verbose=verbose)
     except Exception as e:
         print('Update of film metadata info for {} failed ({})'.format(film_id, e))
     try:
-        update_streaming_info(film_id)
+        update_streaming_info(film_id, verbose=verbose)
     except Exception as e:
         print('Update of streaming info for {} failed ({})'.format(film_id, e))
     update_ingestion_table(film_id)
@@ -64,7 +64,7 @@ def ingest_new_films(film_limit=100):
 
 def get_new_people():
     ingested_person_ids = get_person_ids_from_select_statement('SELECT DISTINCT PERSON_ID FROM PERSON_INFO')
-    all_person_ids = get_person_ids_from_select_statement('SELECT DISTINCT PERSON_ID FROM FILM_CREW')
+    all_person_ids = get_person_ids_from_select_statement('SELECT DISTINCT PERSON_ID FROM (SELECT PERSON_ID FROM FILM_CREW UNION ALL SELECT PERSON_ID FROM FILM_CAST)')
     new_person_ids = [x for x in all_person_ids if x not in ingested_person_ids and x != -1]
     new_person_ids = sample(new_person_ids, len(new_person_ids))
     return new_person_ids
@@ -75,10 +75,14 @@ def ingest_person(person_id):
     except Exception as e:
         print('Update of Person metadata for {} failed ({})'.format(person_id, e))
 
-def ingest_new_people(people_limit=500):
+def ingest_new_people(person_ids=None, people_limit=500):
     load_dotenv(override=True)
-    total_people_to_ingest = get_new_people()
-    people_to_ingest = total_people_to_ingest[:people_limit]
+    if person_ids:
+        total_people_to_ingest = person_ids
+        people_to_ingest = total_people_to_ingest[:people_limit]
+    else:
+        total_people_to_ingest = get_new_people()
+        people_to_ingest = total_people_to_ingest[:people_limit]
     print('In total, there are {} new people to ingest - ingesting {}'.format(len(total_people_to_ingest), len(people_to_ingest)))
     for person_id in tqdm(people_to_ingest):
         ingest_person(person_id)

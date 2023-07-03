@@ -5,7 +5,7 @@ from datetime import datetime
 from sqlite_utils import get_from_table, delete_records, df_to_table
 from justwatch import JustWatch
 
-def update_streaming_info(film_id):
+def update_streaming_info(film_id, verbose=False):
     with open('my_streaming_services.json', 'r') as schema:
         my_streaming_services = json.load(schema)
     my_streaming_services_abbr = [x for x in set([x['provider_abbreviation'] for x in my_streaming_services]) if len(x) > 0]
@@ -34,11 +34,24 @@ def update_streaming_info(film_id):
                     min_rental_price = None
                     valid = 0
             valid_full = [abbr_to_full_dict.get(x) for x in valid_abbr]
-            film_streaming_services_df = pd.DataFrame(index=range(len(valid_abbr)))
-            film_streaming_services_df['FILM_ID'] = film_id
-            film_streaming_services_df['STREAMING_SERVICE_ABBR'] = valid_abbr
-            film_streaming_services_df['STREAMING_SERVICE_FULL'] = valid_full
-            film_streaming_services_df['CREATED_AT'] = datetime.now()
-            film_streaming_services_df['PRICE'] = min_rental_price
-            film_streaming_services_df['VALID'] = valid
-            df_to_table(film_streaming_services_df, 'FILM_STREAMING_SERVICES', replace_append='append', verbose=False)
+            streaming_record = {
+                'FILM_ID': [film_id]*len(valid_abbr),
+                'STREAMING_SERVICE_ABBR': valid_abbr,
+                'STREAMING_SERVICE_FULL': valid_full,
+                'CREATED_AT': [datetime.now()]*len(valid_abbr),
+                'PRICE': [min_rental_price]*len(valid_abbr),
+                'VALID': [valid]*len(valid_abbr)
+                }
+            # film_streaming_services_df = pd.DataFrame(index=range(len(valid_abbr)))
+            # film_streaming_services_df['FILM_ID'] = film_id
+            # film_streaming_services_df['STREAMING_SERVICE_ABBR'] = valid_abbr
+            # film_streaming_services_df['STREAMING_SERVICE_FULL'] = valid_full
+            # film_streaming_services_df['CREATED_AT'] = datetime.now()
+            # film_streaming_services_df['PRICE'] = min_rental_price
+            # film_streaming_services_df['VALID'] = valid
+            df_to_table(pd.DataFrame(streaming_record), 'FILM_STREAMING_SERVICES', replace_append='append', verbose=verbose)
+    if verbose:
+        try:
+            print(streaming_record)
+        except:
+            print('No streaming offers at this time')

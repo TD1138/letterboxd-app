@@ -3,6 +3,7 @@ import pandas as pd
 from datetime import datetime
 from tmdbv3api import TMDb, Movie, TV, Person
 from sqlite_utils import get_from_table, delete_records, insert_record_into_table, df_to_table, replace_record, update_record
+from letterboxd_utils import get_cast_from_letterboxd
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
@@ -54,6 +55,7 @@ def create_movie_metadata_dict(film_id):
     if content_type == 'movie':
         try:
             movie = Movie()
+            # import ipdb; ipdb.set_trace()
             details = movie.details(tmdb_id)
             for k in attrs:
                 movie_metadata_dict[k] = details.get(k, None)
@@ -87,7 +89,7 @@ def create_movie_metadata_dict(film_id):
         movie_metadata_dict = None
     return movie_metadata_dict
 
-def update_financials(movie_metadata_dict):
+def update_financials(movie_metadata_dict, verbose=False):
     film_id = movie_metadata_dict.get('FILM_ID')
     budget = movie_metadata_dict.get('budget', None)
     revenue = movie_metadata_dict.get('revenue', None)
@@ -98,8 +100,9 @@ def update_financials(movie_metadata_dict):
         'CREATED_AT':datetime.now()
     }
     replace_record('FILM_FINANCIALS', financials_record, film_id)
+    if verbose: print(financials_record)
 
-def update_tmdb_stats(movie_metadata_dict):
+def update_tmdb_stats(movie_metadata_dict, verbose=False):
     film_id = movie_metadata_dict.get('FILM_ID')
     popularity = movie_metadata_dict.get('popularity', None)
     vote_count = movie_metadata_dict.get('vote_count', None)
@@ -112,8 +115,9 @@ def update_tmdb_stats(movie_metadata_dict):
         'CREATED_AT':datetime.now()
     }
     replace_record('FILM_TMDB_STATS', tmdb_stats_record, film_id)
+    if verbose: print(tmdb_stats_record)
 
-def get_language(movie_metadata_dict):
+def get_language(movie_metadata_dict, verbose=False):
     film_id = movie_metadata_dict.get('FILM_ID')
     original_language = movie_metadata_dict.get('original_language', None)
     language_record = {
@@ -122,8 +126,9 @@ def get_language(movie_metadata_dict):
         'CREATED_AT':datetime.now()
     }
     replace_record('FILM_LANGUAGE', language_record, film_id)
+    if verbose: print(language_record)
 
-def get_runtime(movie_metadata_dict):
+def get_runtime(movie_metadata_dict, verbose=False):
     film_id = movie_metadata_dict.get('FILM_ID')
     runtime = movie_metadata_dict.get('runtime', None)
     runtime_record = {
@@ -132,8 +137,9 @@ def get_runtime(movie_metadata_dict):
         'CREATED_AT':datetime.now()
     }
     replace_record('FILM_RUNTIME', runtime_record, film_id)
+    if verbose: print(runtime_record)
 
-def update_release_info(movie_metadata_dict):
+def update_release_info(movie_metadata_dict, verbose=False):
     film_id = movie_metadata_dict.get('FILM_ID')
     release_date = movie_metadata_dict.get('release_date', None)
     status = movie_metadata_dict.get('status', None)
@@ -144,89 +150,93 @@ def update_release_info(movie_metadata_dict):
         'CREATED_AT': datetime.now()
         }
     replace_record('FILM_RELEASE_INFO', release_info_record, film_id)
+    if verbose: print(release_info_record)
 
-def update_keywords(movie_metadata_dict):
+def update_keywords(movie_metadata_dict, verbose=False):
     film_id = movie_metadata_dict.get('FILM_ID')
     keywords = movie_metadata_dict.get('keywords', {'keywords': [{'id': -1, 'name': 'none'}]})
-    if keywords:
-        keywords = keywords.get('keywords')
-        keyword_df = pd.DataFrame({
-            'FILM_ID': [film_id]*len(keywords),
-            'KEYWORD_ID':[x.get('id') for x in keywords],
-            'KEYWORD':[x.get('name') for x in keywords],
-            'CREATED_AT': [datetime.now()]*len(keywords)
-                                   })
-        delete_records('FILM_KEYWORDS', film_id)
-        df_to_table(keyword_df, 'FILM_KEYWORDS', replace_append='append', verbose=False)
+    keywords = keywords.get('keywords', [{'id': -1, 'name': 'none'}])
+    if len(keywords) == 0:
+        keywords = [{'id': -1, 'name': 'none'}]
+    keyword_record = {
+        'FILM_ID': [film_id]*len(keywords),
+        'KEYWORD_ID':[x.get('id') for x in keywords],
+        'KEYWORD':[x.get('name') for x in keywords],
+        'CREATED_AT': [datetime.now()]*len(keywords)
+        }
+    delete_records('FILM_KEYWORDS', film_id)
+    df_to_table(pd.DataFrame(keyword_record), 'FILM_KEYWORDS', replace_append='append', verbose=False)
+    if verbose: print(keyword_record)
     
-def update_cast(movie_metadata_dict):
+def update_cast(movie_metadata_dict, verbose=False):
     film_id = movie_metadata_dict.get('FILM_ID')
     cast = movie_metadata_dict.get('casts', {'cast': [{'id': -1, 'character': '', 'order':-1}]})
     cast = cast.get('cast')
     if len(cast) == 0:
         cast = [{'id': -1, 'character': '', 'order':-1}]
-    cast_df = pd.DataFrame({
+    cast_record = {
         'FILM_ID': [film_id]*len(cast),
         'PERSON_ID':[x.get('id') for x in cast],
         'CHARACTER':[x.get('character') for x in cast],
         'CAST_ORDER':[x.get('order') for x in cast],
         'CREATED_AT': [datetime.now()]*len(cast)
-        })
+        }
     delete_records('FILM_CAST', film_id)
-    df_to_table(cast_df, 'FILM_CAST', replace_append='append', verbose=False)
+    df_to_table(pd.DataFrame(cast_record), 'FILM_CAST', replace_append='append', verbose=False)
+    if verbose: print(cast_record)
 
-def update_crew(movie_metadata_dict):
+def update_crew(movie_metadata_dict, verbose=False):
     film_id = movie_metadata_dict.get('FILM_ID')
     crew = movie_metadata_dict.get('casts', {'crew': [{'id': -1, 'job': ''}]})
     crew = crew.get('crew')
     crew = [x for x in crew if x['job'] in required_crew]
     if len(crew) == 0:
         crew = [{'id': -1, 'job': ''}]
-    crew_df = pd.DataFrame({
+    crew_record = {
         'FILM_ID': [film_id]*len(crew),
         'PERSON_ID':[x.get('id') for x in crew],
         'JOB':[x.get('job') for x in crew],
         'CREATED_AT': [datetime.now()]*len(crew)
-        })
+        }
     delete_records('FILM_CREW', film_id)
-    df_to_table(crew_df, 'FILM_CREW', replace_append='append', verbose=False)
+    df_to_table(pd.DataFrame(crew_record), 'FILM_CREW', replace_append='append', verbose=False)
+    if verbose: print(crew_record)
 
-def update_collections(movie_metadata_dict):
+def update_collections(movie_metadata_dict, verbose=False):
     film_id = movie_metadata_dict.get('FILM_ID')
-    collection = movie_metadata_dict.get('belongs_to_collection')
-    if collection:
-        collection_record = {
-            'FILM_ID': film_id,
-            'COLLECTION_ID': collection.get('id'),
-            'COLLECTION_NAME': collection.get('name'),
-            'CREATED_AT':datetime.now()
-            }
-    else:
-        collection_record = {
-            'FILM_ID': film_id,
-            'COLLECTION_ID': -1,
-            'COLLECTION_NAME': '',
-            'CREATED_AT':datetime.now()
-            }
+    collection = movie_metadata_dict.get('belongs_to_collection', {'id': -1, 'name': ''})
+    if not collection or len(collection) == 0:
+        collection = {'id': -1, 'name': ''}
+    collection_record = {
+        'FILM_ID': film_id,
+        'COLLECTION_ID': collection.get('id'),
+        'COLLECTION_NAME': collection.get('name'),
+        'CREATED_AT':datetime.now()
+        }
     replace_record('FILM_COLLECTIONS', collection_record, film_id)
+    if verbose: print(collection_record)
 
-def update_tmbd_metadata(film_id):
+def update_tmbd_metadata(film_id, verbose=False):
     movie_metadata_dict = create_movie_metadata_dict(film_id)
+    if verbose: print(movie_metadata_dict)
     if movie_metadata_dict:
-        update_financials(movie_metadata_dict)
-        update_tmdb_stats(movie_metadata_dict)
-        update_release_info(movie_metadata_dict)
-        update_keywords(movie_metadata_dict)
-        update_cast(movie_metadata_dict)
-        update_crew(movie_metadata_dict)
-        update_collections(movie_metadata_dict)
+        update_financials(movie_metadata_dict, verbose=verbose)
+        update_tmdb_stats(movie_metadata_dict, verbose=verbose)
+        update_release_info(movie_metadata_dict, verbose=verbose)
+        update_keywords(movie_metadata_dict, verbose=verbose)
+        update_cast(movie_metadata_dict, verbose=verbose)
+        update_crew(movie_metadata_dict, verbose=verbose)
+        update_collections(movie_metadata_dict, verbose=verbose)
+    # else:
+    #     import ipdb; ipdb.set_trace()
+        # get_cast_from_letterboxd(film_id, verbose=verbose)
     return movie_metadata_dict
     
-def get_tmbd_metadata(film_id):
-    movie_metadata_dict = update_tmbd_metadata(film_id)
+def get_tmbd_metadata(film_id, verbose=False):
+    movie_metadata_dict = update_tmbd_metadata(film_id, verbose=verbose)
     if movie_metadata_dict:
-        get_language(movie_metadata_dict)
-        get_runtime(movie_metadata_dict)
+        get_language(movie_metadata_dict, verbose=verbose)
+        get_runtime(movie_metadata_dict, verbose=verbose)
 
 def create_person_metadata_dict(person_id):
     person_metadata_dict = {'PERSON_ID': person_id}
