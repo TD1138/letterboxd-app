@@ -20,10 +20,13 @@ year_completion_query = queries['year_completion_query']['sql']
 genre_completion_query = queries['genre_completion_query']['sql']
 director_completion_query = queries['director_completion_query']['sql']
 director_film_level_query = queries['director_film_level_query']['sql']
+director_debut_query = queries['director_debut_query']['sql']
 actor_completion_query = queries['actor_completion_query']['sql']
 actor_film_level_query = queries['actor_film_level_query']['sql']
+actor_debut_query = queries['actor_debut_query']['sql']
 film_score_query = queries['film_score_query']['sql']
 diary_query_basic = queries['diary_query_basic']['sql']
+watched_feature_stats_query = queries['watched_feature_stats_query']['sql']
 
 def scale_col(df, column, suffix='', a=0, b=1):
     col_min = df[column].min()
@@ -41,8 +44,10 @@ year_df = select_statement_to_df(year_completion_query)
 genre_df = select_statement_to_df(genre_completion_query)
 director_df = select_statement_to_df(director_completion_query)
 director_film_level_df = select_statement_to_df(director_film_level_query)
+director_debut_df = select_statement_to_df(director_debut_query)
 actor_df = select_statement_to_df(actor_completion_query)
 actor_film_level_df = select_statement_to_df(actor_film_level_query)
+actor_debut_df = select_statement_to_df(actor_debut_query)
 
 film_score_df = select_statement_to_df(film_score_query)
 diary_query_df = select_statement_to_df(diary_query_basic)
@@ -54,6 +59,7 @@ diary_query_df2['MOVIE_COUNT_ROLLING_28'] = diary_query_df2['MOVIE_COUNT'].rolli
 diary_query_df2['MOVIE_RATING_ROLLING_7'] = diary_query_df2['MOVIE_RATING'].rolling(window=7).mean()
 diary_query_df2['MOVIE_RATING_ROLLING_28'] = diary_query_df2['MOVIE_RATING'].rolling(window=28).mean()
 
+watched_feature_stats_df = select_statement_to_df(watched_feature_stats_query)
 
 # FILTERING:
 
@@ -133,7 +139,7 @@ df_display = df_sorted[['FILM_TITLE', 'FILM_YEAR', 'ALGO_SCORE', 'SCORE_WEIGHTED
 df_scores = df_scaled[['FILM_TITLE', 'FILM_YEAR', 'SEEN_SCORE', 'FILM_WATCH_COUNT', 'FILM_TOP_250', 'FILM_RATING', 'FILM_FAN_COUNT', 'FILM_RUNTIME', 'GENRE_SCORE', 'SCORE_WEIGHTED', 'SCORE_WEIGHTED_SCALED']]
 
 
-watchlist_tab, algo_whiteboard_tab, diary_tab, year_tab, genre_tab, director_tab, actor_tab, filmid_lookup_tab = st.tabs(['Ordered Watchlist', 'Algo Whiteboard', 'Diary Visualisation', 'Year Completion', 'Genre Completion', 'Director Completion', 'Actor Completion', 'FILM_ID Lookup'])
+watchlist_tab, algo_whiteboard_tab, diary_tab, stats, year_tab, genre_tab, director_tab, actor_tab, filmid_lookup_tab = st.tabs(['Ordered Watchlist', 'Algo Whiteboard', 'Diary Visualisation', 'Statistics', 'Year Completion', 'Genre Completion', 'Director Completion', 'Actor Completion', 'FILM_ID Lookup'])
 # save
 with watchlist_tab:
     st.dataframe(df_display, use_container_width=True, hide_index=True)
@@ -224,7 +230,22 @@ with diary_tab:
 	st.line_chart(data=diary_query_df2, x="WATCH_DATE", y=["MOVIE_RATING_ROLLING_7", "MOVIE_RATING_ROLLING_28"])
 	st.line_chart(data=diary_query_df2, x="WATCH_DATE", y=["MOVIE_COUNT_ROLLING_7", "MOVIE_COUNT_ROLLING_28", "MOVIE_RATING_ROLLING_7", "MOVIE_RATING_ROLLING_28"])
 	st.dataframe(diary_query_df2, hide_index=True)
-        
+
+with stats:
+    ratings_hist = px.histogram(watched_feature_stats_df, x="FILM_RATING_SCALED", nbins=10, range_x=(0,5.05))
+    st.plotly_chart(ratings_hist, theme='streamlit', use_container_width=True)
+    genre_agg = watched_feature_stats_df.groupby('FILM_GENRE').agg({'FILM_RATING_SCALED': 'mean', 'FILM_ID': 'count'}).reset_index()
+    genre_agg.columns = ['Genre', 'Rating_mean', 'Films_watched']
+    genre_agg_scatter = px.scatter(
+         genre_agg,
+    	 x='Films_watched',
+    	 y='Rating_mean',
+    	 hover_name='Genre',
+    	 size_max=30,
+    	 template="plotly_dark"
+		)
+    st.plotly_chart(genre_agg_scatter, theme='streamlit', use_container_width=True)
+
 with year_tab:
     st.bar_chart(data=year_df, x='FILM_YEAR', y='PERCENT_WATCHED', use_container_width=True)
     st.dataframe(year_df, hide_index=True)
@@ -287,9 +308,9 @@ with director_tab:
     director_df_filtered = director_film_level_df[director_film_level_df['DIRECTOR_NAME'] == director_name]
     st.dataframe(director_df_filtered, hide_index=True, height=600)
     director_df_filtered_reshaped = pd.melt(director_df_filtered, id_vars=['FILM_TITLE', 'DIRECTOR_NAME'], value_vars=['FILM_RATING', 'FILM_RATING_SCALED'], var_name='RATING_TYPE', value_name='RATING')
-    st.dataframe(director_df_filtered, hide_index=True, height=600)
     st.line_chart(data=director_df_filtered, x="FILM_TITLE", y=["FILM_RATING", "FILM_RATING_SCALED"])
-    st.write(alt.Chart(director_df_filtered).mark_line().encode(x=alt.X('FILM_TITLE', sort=None), y=["FILM_RATING", "FILM_RATING_SCALED"]))
+    st.altair_chart(alt.Chart(director_df_filtered_reshaped).mark_line().encode(x=alt.X('FILM_TITLE', sort=None), y='RATING', color='RATING_TYPE'), use_container_width=True)
+    st.altair_chart(alt.Chart(director_debut_df).mark_line().encode(x='DAYS_SINCE_DEBUT', y='FILM_NUMBER', color='DIRECTOR_NAME'), use_container_width=True)
 
 with actor_tab:
     actor_hist = px.histogram(actor_df, x="PERCENT_WATCHED", nbins=8, range_x=(0,1.05))
@@ -325,6 +346,7 @@ with actor_tab:
     actor_df_filtered = actor_film_level_df[actor_film_level_df['ACTOR_NAME'] == actor_name]
     st.dataframe(actor_df_filtered, hide_index=True, height=600)
     st.line_chart(data=actor_df_filtered, x="FILM_TITLE", y=["FILM_RATING", "FILM_RATING_SCALED"])
+    st.altair_chart(alt.Chart(actor_debut_df).mark_line().encode(x='DAYS_SINCE_DEBUT', y='FILM_NUMBER', color='ACTOR_NAME'), use_container_width=True)
         
 with filmid_lookup_tab:
     film_search = st.text_input('Enter Film Name or ID:')
