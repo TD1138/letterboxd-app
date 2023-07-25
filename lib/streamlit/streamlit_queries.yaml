@@ -118,6 +118,9 @@ year_completion_query:
         ,d.FILM_TITLE
         ,b.FILM_YEAR
         ,CASE WHEN c.FILM_ID IS NULL THEN 0 ELSE 1 END AS WATCHED
+        ,e.FILM_RATING
+        ,f.FILM_RATING_SCALED
+        ,CASE WHEN f.FILM_RATING_SCALED IS NOT NULL THEN 1 ELSE 0 END AS RATED
       
       FROM ALL_FEATURE_FILMS a
       
@@ -129,6 +132,12 @@ year_completion_query:
       
       LEFT JOIN FILM_TITLE d
       ON a.FILM_ID = d.FILM_ID
+
+      LEFT JOIN FILM_LETTERBOXD_STATS e
+      ON a.FILM_ID = e.FILM_ID
+
+      LEFT JOIN PERSONAL_RATING f
+      ON a.FILM_ID = f.FILM_ID
     
     )
 
@@ -138,6 +147,10 @@ year_completion_query:
         ,SUM(WATCHED) AS FILMS_WATCHED
         ,COUNT(*) AS TOTAL_FILMS
         ,AVG(WATCHED) AS PERCENT_WATCHED
+        ,AVG(FILM_RATING) AS MEAN_RATING
+        ,AVG(FILM_RATING_SCALED) AS MY_MEAN_RATING
+        ,AVG(RATED) AS PERCENT_RATED
+
 
     FROM BASE_TABLE
 
@@ -587,6 +600,7 @@ watched_feature_stats_query:
       ,h.FILM_VOTE_COUNT AS TMDB_VOTE_COUNT
       ,i.FILM_YEAR
       ,i.FILM_DECADE
+      ,x.FILM_RATING_BASIC
       ,x.FILM_RATING_SCALED
         
     FROM ALL_FEATURE_FILMS a
