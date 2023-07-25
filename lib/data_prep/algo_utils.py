@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from xgboost import XGBRegressor
 from sklearn.tree import DecisionTreeRegressor
+from sklearn.linear_model import LinearRegression
 from sqlite_utils import select_statement_to_df, df_to_table, table_to_df
 import shap
 
@@ -258,8 +259,11 @@ def scale_col(df, column, suffix='', a=0, b=1):
     df[column+suffix] = ((df[column] - col_min) / col_range) * (b - a) + a
     return df
 
-def run_algo(model_type='xgboost'):
-    assert model_type in ['xgboost', 'decision_tree'], 'model must be one of "s3" or "local" but was passed as {}'.format(model_type)
+valid_model_types = ['xgboost', 'decision_tree', 'linear_regression']
+default_model = 'xgboost'
+
+def run_algo(model_type=default_model):
+    assert model_type in valid_model_types, 'model must be one of {} but was passed as {}'.format(valid_model_types, model_type)
     print('Gathering data for algo run...')
     eligible_watchlist_df = select_statement_to_df(all_features_query)
     director_rating_df = select_statement_to_df(director_rating_query)
@@ -300,6 +304,8 @@ def run_algo(model_type='xgboost'):
         model = XGBRegressor()
     elif model_type == 'decision_tree':
         model = DecisionTreeRegressor(min_samples_leaf=3)
+    elif model_type == 'linear_regression':
+        model = LinearRegression()
     model.fit(X_train, y_train)
     print('Model train complete!')
     print('Making predictions...')
@@ -311,7 +317,11 @@ def run_algo(model_type='xgboost'):
     df_to_table(pred_df, 'FILM_ALGO_SCORE', replace_append='replace')
     print('Predictions saved!')
     print('Calculating SHAP values...')
-    explainer = shap.TreeExplainer(model)
+    if model_type == 'xgboost' or model_type == 'decision_tree':
+        explainer = shap.TreeExplainer(model, X_train)
+    elif model_type == 'linear_regression':
+        explainer = shap.LinearExplainer(model, X_train)
+    # shap_values = explainer.Explainer(X_pred)
     shap_values = explainer.shap_values(X_pred)
     explainer_df = pd.DataFrame(shap_values, columns=X_pred.columns)
     explainer_df.insert(0, 'FILM_ID', pred_df['FILM_ID'])
