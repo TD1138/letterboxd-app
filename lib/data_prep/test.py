@@ -58,7 +58,7 @@ ORDER BY TOTAL_FILM_WATCH_COUNT DESC
 # update_oldest_records(film_limit=10, dryrun=False)
 # refresh_core_tables()
 
-ingest_film('f_0rePK') #, verbose=True)
+# ingest_film('f_0rePK') #, verbose=True)
 # update_oldest_streaming_records(films_to_ingest, 5000)
 # update_oldest_tmdb_metadata_records(['f_0rePK'])
 
@@ -67,4 +67,4 @@ ingest_film('f_0rePK') #, verbose=True)
 
 # ingest_new_people(people_to_ingest, 10000)
 
-# run_algo(model_type='xgboost')
+run_algo(model_type='linear_regression')
