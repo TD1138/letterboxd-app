@@ -232,7 +232,9 @@ with diary_tab:
 	st.dataframe(diary_query_df2, hide_index=True)
 
 with stats:
-    ratings_hist = px.histogram(watched_feature_stats_df, x="FILM_RATING_SCALED", nbins=10, range_x=(0,5.05))
+    ratings_basic_hist = px.bar(watched_feature_stats_df[['FILM_RATING_BASIC', 'FILM_ID']].groupby('FILM_RATING_BASIC').count().reset_index(), x="FILM_RATING_BASIC", y='FILM_ID')
+    st.plotly_chart(ratings_basic_hist, theme='streamlit', use_container_width=True)
+    ratings_hist = px.histogram(watched_feature_stats_df, x="FILM_RATING_SCALED", nbins=10, range_x=(0,5))
     st.plotly_chart(ratings_hist, theme='streamlit', use_container_width=True)
     genre_agg = watched_feature_stats_df.groupby('FILM_GENRE').agg({'FILM_RATING_SCALED': 'mean', 'FILM_ID': 'count'}).reset_index()
     genre_agg.columns = ['Genre', 'Rating_mean', 'Films_watched']
@@ -248,6 +250,8 @@ with stats:
 
 with year_tab:
     st.bar_chart(data=year_df, x='FILM_YEAR', y='PERCENT_WATCHED', use_container_width=True)
+    st.bar_chart(data=year_df, x='FILM_YEAR', y='MY_MEAN_RATING', use_container_width=True)
+    st.bar_chart(data=year_df, x='FILM_YEAR', y='MEAN_RATING', use_container_width=True)
     st.dataframe(year_df, hide_index=True)
     year_scatter = px.scatter(
         year_df,
