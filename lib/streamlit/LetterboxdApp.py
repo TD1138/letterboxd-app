@@ -27,6 +27,8 @@ actor_debut_query = queries['actor_debut_query']['sql']
 film_score_query = queries['film_score_query']['sql']
 diary_query_basic = queries['diary_query_basic']['sql']
 watched_feature_stats_query = queries['watched_feature_stats_query']['sql']
+collection_completion_query = queries['collection_completion_query']['sql']
+collection_film_level_query = queries['collection_film_level_query']['sql']
 
 def scale_col(df, column, suffix='', a=0, b=1):
     col_min = df[column].min()
@@ -48,6 +50,8 @@ director_debut_df = select_statement_to_df(director_debut_query)
 actor_df = select_statement_to_df(actor_completion_query)
 actor_film_level_df = select_statement_to_df(actor_film_level_query)
 actor_debut_df = select_statement_to_df(actor_debut_query)
+collection_df = select_statement_to_df(collection_completion_query)
+collection_film_level_df = select_statement_to_df(collection_film_level_query)
 
 film_score_df = select_statement_to_df(film_score_query)
 diary_query_df = select_statement_to_df(diary_query_basic)
@@ -140,7 +144,7 @@ df_display = df_sorted[['FILM_TITLE', 'FILM_YEAR', 'ALGO_SCORE', 'SCORE_WEIGHTED
 df_scores = df_scaled[['FILM_TITLE', 'FILM_YEAR', 'SEEN_SCORE', 'FILM_WATCH_COUNT', 'FILM_TOP_250', 'FILM_RATING', 'FILM_FAN_COUNT', 'FILM_RUNTIME', 'GENRE_SCORE', 'SCORE_WEIGHTED', 'SCORE_WEIGHTED_SCALED']]
 
 
-watchlist_tab, algo_whiteboard_tab, diary_tab, stats, year_tab, genre_tab, director_tab, actor_tab, filmid_lookup_tab = st.tabs(['Ordered Watchlist', 'Algo Whiteboard', 'Diary Visualisation', 'Statistics', 'Year Completion', 'Genre Completion', 'Director Completion', 'Actor Completion', 'FILM_ID Lookup'])
+watchlist_tab, algo_whiteboard_tab, diary_tab, stats, year_tab, genre_tab, director_tab, actor_tab, collections_tab, filmid_lookup_tab = st.tabs(['Ordered Watchlist', 'Algo Whiteboard', 'Diary Visualisation', 'Statistics', 'Year Completion', 'Genre Completion', 'Director Completion', 'Actor Completion', 'Collections Completion', 'FILM_ID Lookup'])
 # save
 with watchlist_tab:
     st.dataframe(df_display, use_container_width=True, hide_index=True)
@@ -364,7 +368,15 @@ with actor_tab:
     st.dataframe(actor_df_filtered, hide_index=True, height=600)
     st.line_chart(data=actor_df_filtered, x="FILM_TITLE", y=["FILM_RATING", "FILM_RATING_SCALED"])
     st.altair_chart(alt.Chart(actor_debut_df).mark_line().encode(x='DAYS_SINCE_DEBUT', y='FILM_NUMBER', color='ACTOR_NAME'), use_container_width=True)
-        
+
+with collections_tab:
+    collection_df_x = dataframe_explorer(collection_df)
+    st.dataframe(collection_df_x, use_container_width=True, hide_index=True)
+    collection_name = st.selectbox('Enter Collection:', collection_df['COLLECTION_NAME'].unique())
+    collection_df_filtered = collection_film_level_df[collection_film_level_df['COLLECTION_NAME'] == collection_name]
+    collection_df_filtered = collection_df_filtered.drop('COLLECTION_NAME', axis=1)
+    st.dataframe(collection_df_filtered, hide_index=True, height=600)
+
 with filmid_lookup_tab:
     film_search = st.text_input('Enter Film Name or ID:')
     film_id_df = select_statement_to_df('SELECT * FROM FILM_TITLE WHERE (FILM_ID LIKE "%{}%") OR (FILM_TITLE LIKE "%{}%")'.format(film_search, film_search))
