@@ -130,8 +130,9 @@ df_scaled = scale_col(df_scaled, 'SCORE_WEIGHTED', '_SCALED', a=0, b=100)
 # df_scaled['FILM_RUNTIME'] = df_scaled['FILM_RUNTIME'] / df_scaled['SCORE_WEIGHTED']
 # df_scaled['GENRE_SCORE'] = df_scaled['GENRE_SCORE'] / df_scaled['SCORE_WEIGHTED']
 df2 = df.merge(df_scaled[['FILM_ID', 'SCORE_WEIGHTED']], how='left', on='FILM_ID')
-algo_scores = select_statement_to_df('SELECT FILM_ID, ALGO_SCORE FROM FILM_ALGO_SCORE')
-df2 = df2.merge(algo_scores, how='left', on='FILM_ID')
+# algo_scores = select_statement_to_df('SELECT FILM_ID, ALGO_SCORE FROM FILM_ALGO_SCORE')
+algo_features_df = select_statement_to_df('SELECT * FROM FILM_ALGO_SCORE')
+df2 = df2.merge(algo_features_df[['FILM_ID', 'ALGO_SCORE']], how='left', on='FILM_ID')
 df_sorted = df2.sort_values('ALGO_SCORE', ascending=False).reset_index(drop=True)
 df_sorted['SEEN'] = df_sorted['SEEN'].replace({0: 'No', 1: 'Yes'})
 
@@ -156,7 +157,7 @@ with watchlist_tab:
         )
     px_fig.update_traces(marker_sizemin=10)
     st.plotly_chart(px_fig, theme="streamlit", use_container_width=True)
-    st.dataframe(df_scores, use_container_width=True, hide_index=True)
+    st.dataframe(algo_features_df, use_container_width=True, hide_index=True)
     shap_df = df2[['FILM_ID', 'FILM_TITLE', 'ALGO_SCORE']].merge(select_statement_to_df('SELECT * FROM FILM_SHAP_VALUES'), how='left', on='FILM_ID')
     # shap_df = shap_df.sort_values('PREDICTION', ascending=False).reset_index(drop=True)
     shap_df['SCALER'] = shap_df['ALGO_SCORE'] / shap_df['PREDICTION']
@@ -174,22 +175,30 @@ with watchlist_tab:
         film_names = [x[:-7] for x in film_name_years]
         # film_ids = [tmp_df[tmp_df['FILM_TITLE_YEAR'] == x]['FILM_ID'] for x in film_names]
         melted_df = pd.melt(shap_df2[shap_df2['FILM_ID'].isin(film_ids)], id_vars=['FILM_ID', 'FILM_TITLE'])
-        valid_melted_df = melted_df[melted_df['value'].abs() > 0.0005].reset_index(drop=True)
-        valid_melted_df = valid_melted_df[valid_melted_df['variable'] != 'BASE_VALUE']
+        valid_melted_df = melted_df#[melted_df['value'].abs() > 0.0005].reset_index(drop=True)
+        valid_melted_df.columns = [x.replace('value', 'shap_value') for x in valid_melted_df.columns]
+        valid_melted_df['feature_value'] = valid_melted_df.apply(lambda x: algo_features_df[algo_features_df['FILM_ID']==x.FILM_ID].loc[:, x['variable']].values[0] if x['variable'] not in ['BASE_VALUE', 'PREDICTION'] else None, axis=1)
+        # valid_melted_df = valid_melted_df[valid_melted_df['variable'] != 'BASE_VALUE']
+        # valid_melted_df['label'] = np.where(valid_melted_df['variable'] == 'BASE_VALUE', 'BASE_VALUE', valid_melted_df['variable'].astype('str') + '=' + valid_melted_df['og_val'].astype('str'))
         # valid_df = valid_melted_df.pivot_table(values='value', index=['FILM_ID', 'FILM_TITLE'], columns='variable').reset_index().drop('FILM_ID', axis=1)
-        transposed_df = valid_melted_df.drop('FILM_ID', axis=1).pivot(index='variable', columns='FILM_TITLE', values='value').reset_index()
+        st.dataframe(valid_melted_df)
+        transposed_df = valid_melted_df.drop('FILM_ID', axis=1).pivot(index='variable', columns='FILM_TITLE', values=['feature_value', 'shap_value'])
+        transposed_df.columns = ['_'.join(col) for col in transposed_df.columns]
+        transposed_df = transposed_df.reset_index()
         transposed_df = transposed_df.fillna(0)
-        transposed_df = transposed_df[['variable', *film_names]]
         if len(film_names) > 1:
-            transposed_df['VAR'] = transposed_df[film_names[1]] - transposed_df[film_names[0]]
-            transposed_df['ABS_VAR'] = (transposed_df[film_names[0]] - transposed_df[film_names[1]]).abs()
-            transposed_df = transposed_df.sort_values('ABS_VAR', ascending=False)
+            transposed_df2 = transposed_df.copy()[['variable', 'feature_value_'+film_names[0], 'feature_value_'+film_names[1], 'shap_value_'+film_names[0], 'shap_value_'+film_names[1]]]
+            transposed_df2.columns = ['variable', film_names[0], film_names[1], film_names[0] + ' SHAP', film_names[1] + ' SHAP']
+            transposed_df2['VAR'] = transposed_df2[film_names[1]+' SHAP'] - transposed_df2[film_names[0]+' SHAP']
+            transposed_df2['ABS_VAR'] = transposed_df2['VAR'].abs()
+            transposed_df2 = transposed_df2.sort_values('ABS_VAR', ascending=False)
         else:
-            transposed_df = transposed_df.sort_values(film_names[0], ascending=False)
-        transposed_df.columns = [x.replace('variable', 'FEATURE_NAME') for x in transposed_df.columns]
-        transposed_df = transposed_df.round(3)
+            transposed_df2 = transposed_df.copy()[['variable', 'feature_value_'+film_names[0], 'shap_value_'+film_names[0]]]
+            transposed_df2.columns = ['variable', film_names[0], film_names[0]+' SHAP']
+            transposed_df2 = transposed_df2.sort_values(film_names[0]+' SHAP', ascending=False)
+        transposed_df2 = transposed_df2.round(3)
         st.write(film_ids)
-        st.dataframe(transposed_df, hide_index=True)
+        st.dataframe(transposed_df2, use_container_width=True, hide_index=True)
 
 with algo_whiteboard_tab:
     y_cols= ['SEEN_SCORE', 'FILM_WATCH_COUNT', 'FILM_TOP_250', 'FILM_RATING', 'FILM_FAN_COUNT', 'FILM_RUNTIME', 'GENRE_SCORE']
@@ -229,7 +238,7 @@ with diary_tab:
 	st.line_chart(data=diary_query_df2, x="WATCH_DATE", y=["MOVIE_COUNT_ROLLING_7", "MOVIE_COUNT_ROLLING_28"])
 	st.line_chart(data=diary_query_df2, x="WATCH_DATE", y=["MOVIE_RATING_ROLLING_7", "MOVIE_RATING_ROLLING_28"])
 	st.line_chart(data=diary_query_df2, x="WATCH_DATE", y=["MOVIE_COUNT_ROLLING_7", "MOVIE_COUNT_ROLLING_28", "MOVIE_RATING_ROLLING_7", "MOVIE_RATING_ROLLING_28"])
-	st.dataframe(diary_query_df2, hide_index=True)
+	st.dataframe(diary_query_df2, use_container_width=True, hide_index=True)
 
 with stats:
     ratings_basic_hist = px.bar(watched_feature_stats_df[['FILM_RATING_BASIC', 'FILM_ID']].groupby('FILM_RATING_BASIC').count().reset_index(), x="FILM_RATING_BASIC", y='FILM_ID')
@@ -263,6 +272,10 @@ with year_tab:
         template="plotly_dark"
     )
     st.plotly_chart(year_scatter, theme='streamlit', use_container_width=True)
+    year_selection = st.selectbox('Select a Year:', np.sort(tmp_df['FILM_YEAR'].unique()))
+    algo_features_df_year = algo_features_df[algo_features_df['FILM_YEAR'] == year_selection].reset_index(drop=True)
+    algo_features_df_year_x = dataframe_explorer(algo_features_df_year)
+    st.dataframe(algo_features_df_year_x, use_container_width=True, hide_index=True)
         
 with genre_tab:
     genre_bar = px.bar(genre_df, x='FILM_GENRE', y='PERCENT_WATCHED')
