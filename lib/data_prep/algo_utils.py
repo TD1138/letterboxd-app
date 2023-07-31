@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from xgboost import XGBRegressor
+from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.linear_model import LinearRegression
 from sqlite_utils import select_statement_to_df, df_to_table, table_to_df
@@ -299,6 +300,11 @@ def run_algo(model_type=default_model):
     X_train = rated_features[model_features]
     y_train = rated_features[target]
     print('Data gathering complete!')
+    print('Scaling features...')
+    scaler = StandardScaler()
+    scaler.fit(X_train)
+    X_train = scaler.transform(X_train)
+    print('Features Scaled!')
     print('Training model...')
     if model_type == 'xgboost':
         model = XGBRegressor()
@@ -310,6 +316,7 @@ def run_algo(model_type=default_model):
     print('Model train complete!')
     print('Making predictions...')
     X_pred = unrated_features[model_features]
+    X_pred = scaler.transform(X_pred)
     pred_df = unrated_features.copy()
     pred_df['ALGO_SCORE'] = model.predict(X_pred)
     print('Predictions complete!')
@@ -323,7 +330,7 @@ def run_algo(model_type=default_model):
         explainer = shap.LinearExplainer(model, X_train)
     # shap_values = explainer.Explainer(X_pred)
     shap_values = explainer.shap_values(X_pred)
-    explainer_df = pd.DataFrame(shap_values, columns=X_pred.columns)
+    explainer_df = pd.DataFrame(shap_values, columns=model_features)
     explainer_df.insert(0, 'FILM_ID', pred_df['FILM_ID'])
     # import ipdb; ipdb.set_trace()
     try:
