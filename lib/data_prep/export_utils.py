@@ -42,10 +42,13 @@ def set_latest_export(verbose=False):
     dotenv.set_key(dotenv.find_dotenv(), 'LATEST_EXPORT', latest_export_file_loc)
     if verbose: print('Latest export set to {}'.format(latest_export_file_loc))
 
-def cleanup_exports_folder():
+def cleanup_exports_folder(folders_to_keep=5):
     letterboxd_export_folders = get_all_export_folders()
     if len(letterboxd_export_folders) == 5:
-        folders_to_delete = [letterboxd_export_folders[1], letterboxd_export_folders[3]]
+        raw_ind_to_keep = [x/(folders_to_keep-1) for x in range(folders_to_keep)]
+        ind_to_keep = [int((len(letterboxd_export_folders)-1) * x) for x in raw_ind_to_keep]
+        folders_to_keep = [sorted(letterboxd_export_folders)[x] for x in ind_to_keep]
+        folders_to_delete = [x for x in letterboxd_export_folders if x not in folders_to_keep]
         for folder in folders_to_delete:
             shutil.rmtree(os.getenv('PROJECT_PATH')+'/db/raw_exports/'+folder)
 
