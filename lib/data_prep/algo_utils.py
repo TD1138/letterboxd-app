@@ -286,7 +286,8 @@ def run_algo(model_type=default_model):
                     'FILM_RATING_SCALED',
                     'FILM_TOP_250',
                     'FILM_RUNTIME',
-                    'FILM_FAN_COUNT'
+                    'FILM_FAN_COUNT',
+                    'FILM_YEAR'
                     ]
 
     model_features = [x for x in unrated_features.columns if x not in non_features]
@@ -321,7 +322,8 @@ def run_algo(model_type=default_model):
     pred_df['ALGO_SCORE'] = model.predict(X_pred)
     print('Predictions complete!')
     pred_df = scale_col(pred_df, 'ALGO_SCORE')
-    df_to_table(pred_df, 'FILM_ALGO_SCORE', replace_append='replace')
+    final_df = pd.concat([pred_df, rated_features], axis=0).reset_index(drop=True)
+    df_to_table(final_df, 'FILM_ALGO_SCORE', replace_append='replace')
     print('Predictions saved!')
     print('Calculating SHAP values...')
     if model_type == 'xgboost' or model_type == 'decision_tree':
