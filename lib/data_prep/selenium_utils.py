@@ -11,7 +11,7 @@ load_dotenv(override=True)
 
 def download_letterboxd_zip(hide_actions=True):
     try:
-        chromedriver_autoinstaller.install()
+        # chromedriver_autoinstaller.install()
         # chrome_options = Options()
         chrome_options = webdriver.ChromeOptions()
         if hide_actions: chrome_options.add_argument("--headless")
