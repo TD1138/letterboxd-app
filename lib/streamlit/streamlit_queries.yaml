@@ -228,6 +228,7 @@ director_completion_query:
       ON a.FILM_ID = f.FILM_ID
     
       WHERE b.JOB = 'Director'
+      AND e.PERSON_NAME IS NOT NULL
         
       )
       
@@ -304,6 +305,7 @@ director_debut_query:
       ,ROW_NUMBER() OVER (PARTITION BY d.PERSON_ID ORDER BY c.FILM_RELEASE_DATE) AS FILM_NUMBER
       ,MIN(c.FILM_RELEASE_DATE) OVER (PARTITION BY d.PERSON_ID) AS DEBUT_FILM_RELEASE_DATE
       ,julianday(c.FILM_RELEASE_DATE) - julianday(MIN(c.FILM_RELEASE_DATE) OVER (PARTITION BY d.PERSON_ID)) AS DAYS_SINCE_DEBUT
+      ,julianday(c.FILM_RELEASE_DATE) - julianday(e.DATE_OF_BIRTH) AS AGE_IN_DAYS
 
     FROM ALL_FEATURE_FILMS a
     LEFT JOIN FILM_TITLE b
@@ -321,6 +323,86 @@ director_debut_query:
     AND f.TOTAL_FILMS > 5
     AND e.PERSON_NAME IS NOT NULL
 
+director_topfive_query:
+  sql: |
+
+    WITH BASE_TABLE AS (
+      
+      SELECT
+      
+        a.FILM_ID
+        ,b.FILM_TITLE
+        ,d.PERSON_ID
+        ,e.PERSON_NAME AS DIRECTOR_NAME
+        ,CASE WHEN c.FILM_ID IS NULL THEN 0 ELSE 1 END AS RATED
+        ,c.FILM_RATING_SCALED
+      
+      FROM ALL_FEATURE_FILMS a
+      LEFT JOIN FILM_TITLE b
+      ON a.FILM_ID = b.FILM_ID
+      LEFT JOIN PERSONAL_RATING c
+      ON a.FILM_ID = c.FILM_ID
+      LEFT JOIN FILM_CREW d
+      ON a.FILM_ID = d.FILM_ID
+      LEFT JOIN PERSON_INFO e
+      ON d.PERSON_ID = e.PERSON_ID
+      
+      WHERE d.job = 'Director'
+      AND e.PERSON_NAME IS NOT NULL
+    
+    )
+    
+  , RATED AS (
+
+    SELECT 
+      
+      PERSON_ID
+      ,DIRECTOR_NAME
+      ,COUNT(*) AS TOTAL_FILMS
+      ,SUM(RATED) AS FILMS_RATED
+      
+    FROM BASE_TABLE
+    
+    GROUP BY PERSON_ID,DIRECTOR_NAME
+    
+    )
+    
+  , RANKED AS (
+    SELECT
+    
+      a.PERSON_ID
+      ,a.DIRECTOR_NAME
+      ,a.TOTAL_FILMS
+      ,a.FILMS_RATED
+      ,b.FILM_TITLE
+      ,b.FILM_RATING_SCALED
+      ,ROW_NUMBER() OVER (PARTITION BY a.PERSON_ID ORDER BY b.FILM_RATING_SCALED DESC) AS FILM_RANK
+      
+    FROM RATED a
+    
+    LEFT JOIN BASE_TABLE b
+    ON a.PERSON_ID = b.PERSON_ID
+    
+    WHERE a.FILMS_RATED >= 5
+    OR (a.TOTAL_FILMS >=3 AND a.TOTAL_FILMS = a.FILMS_RATED)
+    
+    )
+    
+  SELECT
+
+    PERSON_ID
+    ,DIRECTOR_NAME
+    ,MAX(TOTAL_FILMS) AS TOTAL_FILMS
+    ,MAX(FILMS_RATED) AS FILMS_RATED
+    ,AVG(FILM_RATING_SCALED) AS TOP_FIVE_RATING
+    
+  FROM RANKED
+
+  WHERE FILM_RANK <= 5
+
+  GROUP BY PERSON_ID, DIRECTOR_NAME
+
+  ORDER BY TOP_FIVE_RATING DESC
 
 actor_completion_query:
   sql: |
