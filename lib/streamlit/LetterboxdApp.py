@@ -144,7 +144,7 @@ df_display = df_sorted[['FILM_TITLE', 'FILM_YEAR', 'ALGO_SCORE', 'SCORE_WEIGHTED
 df_scores = df_scaled[['FILM_TITLE', 'FILM_YEAR', 'SEEN_SCORE', 'FILM_WATCH_COUNT', 'FILM_TOP_250', 'FILM_RATING', 'FILM_FAN_COUNT', 'FILM_RUNTIME', 'GENRE_SCORE', 'SCORE_WEIGHTED', 'SCORE_WEIGHTED_SCALED']]
 
 
-watchlist_tab, algo_whiteboard_tab, diary_tab, stats, year_tab, genre_tab, director_tab, actor_tab, collections_tab, filmid_lookup_tab = st.tabs(['Ordered Watchlist', 'Algo Whiteboard', 'Diary Visualisation', 'Statistics', 'Year Completion', 'Genre Completion', 'Director Completion', 'Actor Completion', 'Collections Completion', 'FILM_ID Lookup'])
+watchlist_tab, diary_tab, stats, year_tab, genre_tab, director_tab, actor_tab, collections_tab, filmid_lookup_tab = st.tabs(['Ordered Watchlist', 'Diary Visualisation', 'Statistics', 'Year Completion', 'Genre Completion', 'Director Completion', 'Actor Completion', 'Collections Completion', 'FILM_ID Lookup'])
 # save
 with watchlist_tab:
     st.dataframe(df_display, use_container_width=True, hide_index=True)
@@ -170,13 +170,14 @@ with watchlist_tab:
     shap_df2.insert(1, 'FILM_TITLE', df2['FILM_TITLE'])
     shap_df2 = shap_df2.sort_values('PREDICTION', ascending=False)
     tmp_df = df_sorted[['FILM_ID', 'FILM_TITLE', 'FILM_YEAR', 'ALGO_SCORE']].copy()
-    tmp_df['FILM_TITLE_YEAR'] = tmp_df['FILM_TITLE'] + ' - ' + tmp_df['FILM_YEAR'].astype(str)
+    tmp_df['FILM_TITLE_YEAR_ID'] = tmp_df['FILM_TITLE'] + ' - ' + tmp_df['FILM_YEAR'].astype(str) + ' (' + tmp_df['FILM_ID'] + ')'
     tmp_df = tmp_df.sort_values('ALGO_SCORE', ascending=False)
-    film_name_years = st.multiselect('Select Films:', tmp_df['FILM_TITLE_YEAR'].unique())
+    st.dataframe(tmp_df)
+    film_name_years = st.multiselect('Select Films:', tmp_df['FILM_TITLE_YEAR_ID'].unique())
     if len(film_name_years) > 0:
-        film_ids = [tmp_df[tmp_df['FILM_TITLE_YEAR']==x]['FILM_ID'].values[0] for x in film_name_years]
+        film_ids = [tmp_df[tmp_df['FILM_TITLE_YEAR_ID']==x]['FILM_ID'].values[0] for x in film_name_years]
         # st.dataframe(return_comparison_df(film_ids, min_shap_val=0.001, decimal_places=3), hide_index=True, use_container_width=True)
-        film_names = [x[:-7] for x in film_name_years]
+        film_names = [x[:-17] for x in film_name_years]
         # film_ids = [tmp_df[tmp_df['FILM_TITLE_YEAR'] == x]['FILM_ID'] for x in film_names]
         melted_df = pd.melt(shap_df2[shap_df2['FILM_ID'].isin(film_ids)], id_vars=['FILM_ID', 'FILM_TITLE'])
         valid_melted_df = melted_df#[melted_df['value'].abs() > 0.0005].reset_index(drop=True)
@@ -203,40 +204,6 @@ with watchlist_tab:
         transposed_df2 = transposed_df2.round(3)
         st.write(film_ids)
         st.dataframe(transposed_df2, use_container_width=True, hide_index=True)
-
-with algo_whiteboard_tab:
-    y_cols= ['SEEN_SCORE', 'FILM_WATCH_COUNT', 'FILM_TOP_250', 'FILM_RATING', 'FILM_FAN_COUNT', 'FILM_RUNTIME', 'GENRE_SCORE']
-    films_to_show = 66
-    SEEN_SCORE_SCALER = st.number_input('SEEN_SCORE_SCALER', min_value=0.0, max_value=10.0, value=3.0, step=.5)
-    FILM_WATCH_COUNT_SCALER = st.number_input('FILM_WATCH_COUNT_SCALER', min_value=0.0, max_value=10.0, value=2.0, step=.5)
-    FILM_TOP_250_SCALER = st.number_input('FILM_TOP_250_SCALER', min_value=0.0, max_value=10.0, value=1.0, step=.5)
-    FILM_RATING_SCALER = st.number_input('FILM_RATING_SCALER', min_value=0.0, max_value=10.0, value=2.0, step=.5)
-    FILM_FAN_COUNT_SCALER = st.number_input('FILM_FAN_COUNT_SCALER', min_value=0.0, max_value=10.0, value=1.0, step=.5)
-    FILM_RUNTIME_SCALER = st.number_input('FILM_RUNTIME_SCALER', min_value=0.0, max_value=10.0, value=.5, step=.5)
-    GENRE_SCORE_SCALER = st.number_input('GENRE_SCORE_SCALER', min_value=0.0, max_value=10.0, value=2.0, step=.5)
-
-    df_weighted = df_scaled.copy()
-    df_weighted['SEEN_SCORE'] =           df_weighted['SEEN_SCORE']        * SEEN_SCORE_SCALER
-    df_weighted['FILM_WATCH_COUNT'] =     df_weighted['FILM_WATCH_COUNT']  * FILM_WATCH_COUNT_SCALER
-    df_weighted['FILM_TOP_250'] =         df_weighted['FILM_TOP_250']      * FILM_TOP_250_SCALER
-    df_weighted['FILM_RATING'] =          df_weighted['FILM_RATING']       * FILM_RATING_SCALER
-    df_weighted['FILM_FAN_COUNT'] =       df_weighted['FILM_FAN_COUNT']    * FILM_FAN_COUNT_SCALER
-    df_weighted['FILM_RUNTIME'] =         df_weighted['FILM_RUNTIME']      * FILM_RUNTIME_SCALER
-    df_weighted['GENRE_SCORE'] =          df_weighted['GENRE_SCORE']       * GENRE_SCORE_SCALER
-
-    df_weighted['TOTAL_WEIGHTED_SCORE'] = df_weighted['SEEN_SCORE']          \
-                                        + df_weighted['FILM_WATCH_COUNT']    \
-                                        + df_weighted['FILM_TOP_250']        \
-                                        + df_weighted['FILM_RATING']         \
-                                        + df_weighted['FILM_FAN_COUNT']      \
-                                        + df_weighted['FILM_RUNTIME']        \
-                                        + df_weighted['GENRE_SCORE']         \
-
-    df_weighted = df_weighted.sort_values('TOTAL_WEIGHTED_SCORE', ascending=False).reset_index(drop=True)
-    df_weighted['PADDED_INDEX'] = df_weighted.index.map(lambda x: str(x).zfill(2))
-    df_weighted['FILM_TITLE_SORT'] = df_weighted['PADDED_INDEX'] + df_weighted['FILM_TITLE']
-    st.bar_chart(data=df_weighted.head(films_to_show)[['FILM_TITLE_SORT'] + y_cols], x='FILM_TITLE_SORT', y=y_cols)
-    st.dataframe(df_weighted.head(films_to_show)[['FILM_TITLE_SORT', 'TOTAL_WEIGHTED_SCORE'] + y_cols], hide_index=True)
 
 with diary_tab:
 	st.line_chart(data=diary_query_df2, x="WATCH_DATE", y=["MOVIE_COUNT_ROLLING_7", "MOVIE_COUNT_ROLLING_28"])
@@ -317,7 +284,7 @@ with director_tab:
     st.plotly_chart(director_scatter, theme='streamlit', use_container_width=True)
     director_watch_rate_scatter = px.scatter(
          director_df,
-    	 x='PERCENT_WATCHED',
+    	 x='FILMS_WATCHED',
     	 y='PERCENT_RATED',
          size='TOTAL_FILMS',
     	 hover_name='DIRECTOR_NAME',
@@ -332,6 +299,8 @@ with director_tab:
     st.line_chart(data=director_df_filtered, x="FILM_TITLE", y=["FILM_RATING", "FILM_RATING_SCALED"])
     st.altair_chart(alt.Chart(director_df_filtered_reshaped).mark_line().encode(x=alt.X('FILM_TITLE', sort=None), y='RATING', color='RATING_TYPE'), use_container_width=True)
     st.altair_chart(alt.Chart(director_debut_df).mark_line().encode(x='DAYS_SINCE_DEBUT', y='FILM_NUMBER', color='DIRECTOR_NAME'), use_container_width=True)
+    st.altair_chart(alt.Chart(director_debut_df).mark_line().encode(x='AGE_IN_DAYS', y='FILM_NUMBER', color='DIRECTOR_NAME'), use_container_width=True)
+    st.altair_chart(alt.Chart(director_debut_df).mark_line().encode(x='FILM_RELEASE_DATE', y='FILM_NUMBER', color='DIRECTOR_NAME'), use_container_width=True)
 
 with actor_tab:
     actor_hist = px.histogram(actor_df, x="PERCENT_WATCHED", nbins=8, range_x=(0,1.05))
