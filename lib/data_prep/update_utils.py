@@ -8,11 +8,26 @@ from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
+def update_top_letterboxd_stats_records(film_ids=None, film_limit=100, dryrun=False):
+    if film_ids:
+        letterboxd_stats_to_update = film_ids
+    else:
+        letterboxd_stats_to_update = get_film_ids_from_select_statement(popular_letterboxd_stats_select_statement)[:film_limit]
+    print('In total, we are going to update the {} most popular records for letterboxd stats'.format(len(letterboxd_stats_to_update)))
+    if dryrun:
+        print(letterboxd_stats_to_update[:10])
+        return
+    for film_id in tqdm(letterboxd_stats_to_update):
+        try:
+            update_letterboxd_stats(film_id)
+        except Exception as e:
+            print('Update of Letterboxd info for {} failed ({})'.format(film_id, e))
+
 def update_oldest_letterboxd_stats_records(film_ids=None, film_limit=100, dryrun=False):
     if film_ids:
         letterboxd_stats_to_update = film_ids
     else:
-        letterboxd_stats_to_update = get_film_ids_from_select_statement(letterboxd_stats_select_statement)[:film_limit]
+        letterboxd_stats_to_update = get_film_ids_from_select_statement(oldest_letterboxd_stats_select_statement)[:film_limit]
     print('In total, we are going to update the oldest {} records for letterboxd stats'.format(len(letterboxd_stats_to_update)))
     if dryrun:
         print(letterboxd_stats_to_update[:10])
@@ -27,7 +42,7 @@ def update_oldest_tmdb_metadata_records(film_ids=None, film_limit=100, dryrun=Fa
     if film_ids:
         tmdb_metadata_to_update = film_ids
     else:
-        tmdb_metadata_to_update = get_film_ids_from_select_statement(tmdb_metadata_select_statement)[:film_limit]
+        tmdb_metadata_to_update = get_film_ids_from_select_statement(oldest_tmdb_metadata_select_statement)[:film_limit]
     print('In total, we are going to update the oldest {} records for tmdb metadata'.format(len(tmdb_metadata_to_update)))
     if dryrun:
         print(tmdb_metadata_to_update[:10])
@@ -42,7 +57,7 @@ def update_oldest_streaming_records(film_ids=None, film_limit=100, dryrun=False)
     if film_ids:
         streaming_to_update = film_ids
     else:
-        streaming_to_update = get_film_ids_from_select_statement(streaming_select_statement)[:film_limit]
+        streaming_to_update = get_film_ids_from_select_statement(oldest_streaming_select_statement)[:film_limit]
     print('In total, we are going to update the oldest {} records for streaming'.format(len(streaming_to_update)))
     if dryrun:
         print(streaming_to_update[:10])
@@ -62,7 +77,13 @@ def update_oldest_records(film_ids=None, film_limit=100, dryrun=False):
     update_oldest_tmdb_metadata_records(film_ids=film_ids, film_limit=film_limit, dryrun=dryrun)
     update_oldest_streaming_records(film_ids=film_ids, film_limit=film_limit*10, dryrun=dryrun)
 
-letterboxd_stats_select_statement = ("""
+def update_most_popular_records(film_ids=None, film_limit=100, dryrun=False):
+    load_dotenv(override=True)
+    update_top_letterboxd_stats_records(film_ids=film_ids, film_limit=film_limit, dryrun=dryrun)
+
+
+
+oldest_letterboxd_stats_select_statement = ("""
 
 SELECT
 	 a.FILM_ID
@@ -76,7 +97,7 @@ ORDER BY DAYS_SINCE_LAST_UPDATE DESC
 
 """)
 
-tmdb_metadata_select_statement = ("""
+oldest_tmdb_metadata_select_statement = ("""
 
 SELECT
 	 a.FILM_ID
@@ -90,7 +111,7 @@ ORDER BY DAYS_SINCE_LAST_UPDATE DESC
 
 """)
 
-streaming_select_statement = ("""
+oldest_streaming_select_statement = ("""
 
 SELECT
 
@@ -102,5 +123,19 @@ LEFT JOIN (SELECT FILM_ID, MAX(CREATED_AT) AS CREATED_AT FROM FILM_STREAMING_SER
 ON a.FILM_ID = b.FILM_ID
 
 ORDER BY DAYS_SINCE_LAST_UPDATE DESC
+
+""")
+
+popular_letterboxd_stats_select_statement = ("""
+
+SELECT
+	 a.FILM_ID
+	,b.FILM_WATCH_COUNT
+	
+FROM ALL_RELEASED_FILMS a
+LEFT JOIN FILM_LETTERBOXD_STATS b
+ON a.FILM_ID = b.FILM_ID
+
+ORDER BY b.FILM_WATCH_COUNT DESC
 
 """)
