@@ -5,7 +5,11 @@ from datetime import datetime
 from sqlite_utils import get_from_table, delete_records, df_to_table
 from justwatch import JustWatch
 
-def update_streaming_info(film_id, verbose=False):
+# TEMP_OVERRIDE since Justwatch API is down:
+
+def update_streaming_info(film_id, verbose=False, TEMP_OVERRIDE=True):
+    if TEMP_OVERRIDE:
+        return None
     with open('my_streaming_services.json', 'r') as schema:
         my_streaming_services = json.load(schema)
     my_streaming_services_abbr = [x for x in set([x['provider_abbreviation'] for x in my_streaming_services]) if len(x) > 0]
