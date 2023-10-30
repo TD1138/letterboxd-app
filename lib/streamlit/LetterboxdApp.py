@@ -21,6 +21,7 @@ genre_completion_query = queries['genre_completion_query']['sql']
 director_completion_query = queries['director_completion_query']['sql']
 director_film_level_query = queries['director_film_level_query']['sql']
 director_debut_query = queries['director_debut_query']['sql']
+director_topfive_query = queries['director_topfive_query']['sql']
 actor_completion_query = queries['actor_completion_query']['sql']
 actor_film_level_query = queries['actor_film_level_query']['sql']
 actor_debut_query = queries['actor_debut_query']['sql']
@@ -47,6 +48,7 @@ genre_df = select_statement_to_df(genre_completion_query)
 director_df = select_statement_to_df(director_completion_query)
 director_film_level_df = select_statement_to_df(director_film_level_query)
 director_debut_df = select_statement_to_df(director_debut_query)
+director_topfive_df = select_statement_to_df(director_topfive_query)
 actor_df = select_statement_to_df(actor_completion_query)
 actor_film_level_df = select_statement_to_df(actor_film_level_query)
 actor_debut_df = select_statement_to_df(actor_debut_query)
@@ -263,8 +265,6 @@ with genre_tab:
     st.plotly_chart(genre_scatter, theme='streamlit', use_container_width=True)
 	
 with director_tab:
-    director_hist = px.histogram(director_df, x="PERCENT_WATCHED", nbins=8, range_x=(0,1.05))
-    st.plotly_chart(director_hist, theme='streamlit', use_container_width=True)
     director_watched_bar = px.bar(director_df.head(50), x='DIRECTOR_NAME', y='PERCENT_WATCHED')
     director_watched_bar.update_layout(xaxis={'categoryorder': 'total descending'})
     st.plotly_chart(director_watched_bar, theme='streamlit', use_container_width=True)
@@ -272,6 +272,7 @@ with director_tab:
     director_rated_bar.update_layout(xaxis={'categoryorder': 'total descending'})
     st.plotly_chart(director_rated_bar, theme='streamlit', use_container_width=True)
     st.dataframe(director_df, hide_index=True)
+    st.dataframe(director_topfive_df.drop('PERSON_ID', axis=1), hide_index=True)
     director_scatter = px.scatter(
          director_df,
     	 x='FILMS_WATCHED',
