@@ -325,12 +325,12 @@ director_debut_query:
 
 director_topfive_query:
   sql: |
-
+    
     WITH BASE_TABLE AS (
-      
+
       SELECT
       
-        a.FILM_ID
+         a.FILM_ID
         ,b.FILM_TITLE
         ,d.PERSON_ID
         ,e.PERSON_NAME AS DIRECTOR_NAME
@@ -352,57 +352,58 @@ director_topfive_query:
     
     )
     
-  , RATED AS (
-
-    SELECT 
+    , RATED AS (
       
+        SELECT
+        
+          PERSON_ID
+          ,DIRECTOR_NAME
+          ,COUNT(*) AS TOTAL_FILMS
+          ,SUM(RATED) AS FILMS_RATED
+        
+        FROM BASE_TABLE
+      
+        GROUP BY PERSON_ID,DIRECTOR_NAME
+      
+      )
+    
+    , RANKED AS (
+      
+        SELECT
+      
+          a.PERSON_ID
+          ,a.DIRECTOR_NAME
+          ,a.TOTAL_FILMS
+          ,a.FILMS_RATED
+          ,b.FILM_TITLE
+          ,b.FILM_RATING_SCALED
+          ,ROW_NUMBER() OVER (PARTITION BY a.PERSON_ID ORDER BY b.FILM_RATING_SCALED DESC) AS FILM_RANK
+          
+        FROM RATED a
+        
+        LEFT JOIN BASE_TABLE b
+        ON a.PERSON_ID = b.PERSON_ID
+        
+        WHERE a.FILMS_RATED >= 5
+        OR (a.TOTAL_FILMS >=3 AND a.TOTAL_FILMS = a.FILMS_RATED)
+      
+      )
+    
+    SELECT
+
       PERSON_ID
       ,DIRECTOR_NAME
-      ,COUNT(*) AS TOTAL_FILMS
-      ,SUM(RATED) AS FILMS_RATED
+      ,MAX(TOTAL_FILMS) AS TOTAL_FILMS
+      ,MAX(FILMS_RATED) AS FILMS_RATED
+      ,AVG(FILM_RATING_SCALED) AS TOP_FIVE_RATING
       
-    FROM BASE_TABLE
-    
-    GROUP BY PERSON_ID,DIRECTOR_NAME
-    
-    )
-    
-  , RANKED AS (
-    SELECT
-    
-      a.PERSON_ID
-      ,a.DIRECTOR_NAME
-      ,a.TOTAL_FILMS
-      ,a.FILMS_RATED
-      ,b.FILM_TITLE
-      ,b.FILM_RATING_SCALED
-      ,ROW_NUMBER() OVER (PARTITION BY a.PERSON_ID ORDER BY b.FILM_RATING_SCALED DESC) AS FILM_RANK
-      
-    FROM RATED a
-    
-    LEFT JOIN BASE_TABLE b
-    ON a.PERSON_ID = b.PERSON_ID
-    
-    WHERE a.FILMS_RATED >= 5
-    OR (a.TOTAL_FILMS >=3 AND a.TOTAL_FILMS = a.FILMS_RATED)
-    
-    )
-    
-  SELECT
+    FROM RANKED
 
-    PERSON_ID
-    ,DIRECTOR_NAME
-    ,MAX(TOTAL_FILMS) AS TOTAL_FILMS
-    ,MAX(FILMS_RATED) AS FILMS_RATED
-    ,AVG(FILM_RATING_SCALED) AS TOP_FIVE_RATING
-    
-  FROM RANKED
+    WHERE FILM_RANK <= 5
 
-  WHERE FILM_RANK <= 5
+    GROUP BY PERSON_ID, DIRECTOR_NAME
 
-  GROUP BY PERSON_ID, DIRECTOR_NAME
-
-  ORDER BY TOP_FIVE_RATING DESC
+    ORDER BY TOP_FIVE_RATING DESC
 
 actor_completion_query:
   sql: |
