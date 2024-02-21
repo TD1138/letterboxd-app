@@ -97,6 +97,7 @@ def refresh_core_tables(verbose=False):
     df_to_table(watchlist_df[['FILM_ID', 'ADDED_DATE']], 'WATCHLIST', replace_append='replace', verbose=verbose)
 
     all_films_df = pd.concat([watched_df, watchlist_df])
+    all_films_df = all_films_df.drop_duplicates(subset='FILM_ID')
     title_df = all_films_df[['FILM_ID', 'NAME', 'LETTERBOXD_URI']]
     title_df.columns = ['FILM_ID', 'FILM_TITLE', 'LETTERBOXD_URL']
     df_to_table(title_df, 'FILM_TITLE', replace_append='replace', verbose=verbose)
@@ -114,7 +115,8 @@ def refresh_core_tables(verbose=False):
     diary_df['TAGS'] = diary_df['TAGS'].fillna('')
     diary_df = diary_df.merge(ranking_list[['FILM_ID', 'FILM_POSITION']], how='left', on='FILM_ID')
     diary_df['IS_NARRATIVE_FEATURE'] = np.where(diary_df['FILM_POSITION'].isnull(), 0, 1)
-    df_to_table(diary_df[['FILM_ID', 'WATCH_DATE', 'FILM_RATING', 'TAGS', 'FIRST_TIME_WATCH', 'IS_NARRATIVE_FEATURE']], 'DIARY', replace_append='replace', verbose=verbose)
+    diary_df.insert(2, 'WATCH_ORDER_DAY', diary_df.groupby(['WATCH_DATE']).cumcount() + 1)
+    df_to_table(diary_df[['FILM_ID', 'WATCH_DATE', 'WATCH_ORDER_DAY', 'FILM_RATING', 'TAGS', 'FIRST_TIME_WATCH', 'IS_NARRATIVE_FEATURE']], 'DIARY', replace_append='replace', verbose=verbose)
 
     feature_diary_df = diary_df[diary_df['IS_NARRATIVE_FEATURE']==1].reset_index(drop=True)
     ratings_dict = create_ratings_dict(feature_diary_df)
