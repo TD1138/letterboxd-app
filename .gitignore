@@ -9,3 +9,6 @@ db/raw_exports/
 
 # credentials folder
 creds/
+
+# MISC
+test.csv
