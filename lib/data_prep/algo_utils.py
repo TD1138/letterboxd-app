@@ -253,6 +253,68 @@ GROUP BY FILM_ID, FILM_TITLE
 
 """
 
+top_actor_film_level_query = """
+
+WITH BASE_TABLE AS (
+
+    SELECT
+
+        a.FILM_ID
+        ,d.FILM_TITLE
+        ,b.PERSON_ID
+        ,e.PERSON_NAME AS ACTOR_NAME
+        ,CASE WHEN c.FILM_ID IS NULL THEN 0 ELSE 1 END AS WATCHED
+        ,CASE WHEN f.FILM_RATING_SCALED IS NOT NULL THEN 1 ELSE 0 END AS RATED
+        ,f.FILM_RATING_SCALED
+
+    FROM ALL_FEATURE_FILMS a
+    
+    LEFT JOIN FILM_CAST b
+    ON a.FILM_ID = b.FILM_ID
+    
+    LEFT JOIN WATCHED c
+    ON a.FILM_ID = c.FILM_ID
+    
+    LEFT JOIN FILM_TITLE d
+    ON a.FILM_ID = d.FILM_ID
+
+    LEFT JOIN PERSON_INFO e
+    ON b.PERSON_ID = e.PERSON_ID
+
+    LEFT JOIN PERSONAL_RATING f
+    ON a.FILM_ID = f.FILM_ID
+
+    WHERE e.PERSON_NAME IS NOT NULL
+    
+    )
+    
+, ACTOR_TABLE AS (
+
+    SELECT
+
+    PERSON_ID
+    ,SUM(WATCHED) AS TOTAL_WATCHED
+    
+    FROM BASE_TABLE
+    
+    GROUP BY PERSON_ID
+    
+    HAVING TOTAL_WATCHED >= 20
+)
+
+SELECT
+    
+     a.FILM_ID
+    ,a.PERSON_ID
+    ,a.ACTOR_NAME
+    ,1 AS ACTOR_IN_FILM
+    
+FROM BASE_TABLE a
+INNER JOIN ACTOR_TABLE b
+ON a.PERSON_ID = b.PERSON_ID
+
+"""
+
 def scale_col(df, column, suffix='', a=0, b=1):
     col_min = df[column].min()
     col_max = df[column].max()
@@ -274,6 +336,12 @@ def run_algo(model_type=default_model):
     keyword_df['COUNT'] = 1
     keyword_df_wide = pd.pivot_table(keyword_df, values='COUNT', index=['FILM_ID'], columns=['KEYWORD']).fillna(0).reset_index()
     eligible_watchlist_df = eligible_watchlist_df.merge(keyword_df_wide, how='left', on='FILM_ID')
+    top_actor_film_level_df = select_statement_to_df(top_actor_film_level_query)
+    actor_lookup_df = top_actor_film_level_df.groupby(['PERSON_ID', 'ACTOR_NAME']).count().reset_index()
+    actor_lookup_dict = {id:name for id, name in zip(actor_lookup_df['PERSON_ID'], actor_lookup_df['ACTOR_NAME'])}
+    top_actor_film_level_df_wide = pd.pivot_table(top_actor_film_level_df, values='ACTOR_IN_FILM', index=['FILM_ID'], columns='PERSON_ID').fillna(0)
+    top_actor_film_level_df_wide.columns = [actor_lookup_dict.get(x, x) for x in top_actor_film_level_df_wide.columns]
+    eligible_watchlist_df = eligible_watchlist_df.merge(top_actor_film_level_df_wide, how='left', on='FILM_ID').fillna(0)
     eligible_watchlist_df['FILM_TOP_250'] = eligible_watchlist_df['FILM_TOP_250'].fillna(266)
     eligible_watchlist_df['FILM_RATING'] = eligible_watchlist_df['FILM_RATING'].fillna(2.0)
     eligible_watchlist_df = eligible_watchlist_df.fillna(0)
@@ -284,10 +352,14 @@ def run_algo(model_type=default_model):
     non_features = ['FILM_ID',
                     'FILM_TITLE',
                     'FILM_RATING_SCALED',
-                    'FILM_TOP_250',
                     'FILM_RUNTIME',
+                    'FILM_WATCH_COUNT',
                     'FILM_FAN_COUNT',
-                    'FILM_YEAR'
+                    'FILM_YEAR',
+                    'FILM_TOP_250',
+                    'DIRECTOR_MEAN_RATING',
+                    'DIRECTOR_TOTAL_FILMS',
+                    'DIRECTOR_PERCENT_WATCHED',
                     ]
 
     model_features = [x for x in unrated_features.columns if x not in non_features]
