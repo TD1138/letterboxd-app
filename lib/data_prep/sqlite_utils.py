@@ -159,6 +159,7 @@ def update_record(table_name, column_name, column_value, film_id, primary_key='F
     c = db_conn.cursor()
     try:
         c.execute('UPDATE {} SET {} = ? WHERE {} = ?'.format(table_name, column_name, primary_key), (column_value, film_id))
+        c.execute('UPDATE {} SET {} = ? WHERE {} = ?'.format(table_name, 'CREATED_AT', primary_key), (datetime.now(), film_id))
         db_conn.commit()
     except sql.Error as error:
         print("Error executing update statement:", error)
@@ -193,6 +194,6 @@ def get_person_ids_from_select_statement(select_statement):
 def update_ingestion_table(film_id):
     ingestion_record = {
         'FILM_ID': film_id,
-        'INGESTION_DATETIME':datetime.now()
+        'INGESTION_DATETIME': datetime.now()
     }
     replace_record('INGESTED', ingestion_record, film_id)
