@@ -4,7 +4,7 @@ import json
 import requests
 from datetime import datetime
 from bs4 import BeautifulSoup
-from sqlite_utils import get_from_table, insert_record_into_table, delete_records, replace_record, update_ingestion_table, df_to_table
+from sqlite_utils import get_from_table, insert_record_into_table, delete_records, replace_record, update_record, update_ingestion_table, df_to_table
 from tmdbv3api import Person
 
 def get_metadata_from_letterboxd(film_id, verbose=False):
@@ -115,7 +115,16 @@ def get_letterboxd_rating(film_id):
 
 def get_letterboxd_metrics(film_id):
     film_url_title = get_from_table('FILM_URL_TITLE', film_id, 'FILM_URL_TITLE')
-    r = requests.get('https://letterboxd.com/film/{}/members/rated/.5-5/'.format(film_url_title))
+    initial_url = 'https://letterboxd.com/film/{}/members/rated/.5-5/'.format(film_url_title)
+    r = requests.get(initial_url)
+    redirected_url = r.url
+    if initial_url != redirected_url:
+        new_film_url_title = redirected_url.replace('https://letterboxd.com/film/', '').replace('/members/rated/.5-5/', '')
+        update_record(table_name='FILM_URL_TITLE',
+                      column_name='FILM_URL_TITLE',
+                      column_value=new_film_url_title,
+                      film_id=film_id)
+        film_url_title = new_film_url_title
     soup = BeautifulSoup(r.content, 'lxml')
     metrics_dict = {}
     for i in ['members', 'fans', 'likes', 'reviews', 'lists']:
