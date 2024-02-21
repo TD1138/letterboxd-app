@@ -775,7 +775,7 @@ diary_query_detail:
     LEFT JOIN PERSONAL_RATING c
     ON a.FILM_ID = c.FILM_ID
     WHERE a.IS_NARRATIVE_FEATURE = 1
-    ORDER BY a.WATCH_DATE DESC
+    ORDER BY a.WATCH_DATE DESC, a.WATCH_ORDER_DAY DESC
 
 top_keyword_query:
   sql: |
