@@ -118,6 +118,8 @@ year_completion_query:
         ,d.FILM_TITLE
         ,b.FILM_YEAR
         ,CASE WHEN c.FILM_ID IS NULL THEN 0 ELSE 1 END AS WATCHED
+        ,1.0*e.FILM_WATCH_COUNT AS FILM_WATCH_COUNT
+        ,CASE WHEN c.FILM_ID IS NULL THEN 0.0 ELSE 1.0*e.FILM_WATCH_COUNT END AS FILM_WATCH_COUNT_WATCHED
         ,e.FILM_RATING
         ,f.FILM_RATING_SCALED
         ,CASE WHEN f.FILM_RATING_SCALED IS NOT NULL THEN 1 ELSE 0 END AS RATED
@@ -150,6 +152,9 @@ year_completion_query:
         ,AVG(FILM_RATING) AS MEAN_RATING
         ,AVG(FILM_RATING_SCALED) AS MY_MEAN_RATING
         ,AVG(RATED) AS PERCENT_RATED
+        ,SUM(FILM_WATCH_COUNT) AS TOTAL_FILM_WATCH_COUNT
+        ,SUM(FILM_WATCH_COUNT_WATCHED) AS TOTAL_FILM_WATCH_COUNT_WATCHED
+        ,CASE WHEN SUM(FILM_WATCH_COUNT) = 0 THEN 0 ELSE SUM(FILM_WATCH_COUNT_WATCHED) / SUM(FILM_WATCH_COUNT) END AS TOTAL_FILM_WATCH_COUNT_WATCHED_PERCENT
 
 
     FROM BASE_TABLE
@@ -405,6 +410,58 @@ director_topfive_query:
 
     ORDER BY TOP_FIVE_RATING DESC
 
+director_sparklines_query:
+  sql: |
+    WITH DIRECTOR_DIARY AS (
+
+      SELECT
+      
+        a.FILM_ID
+        ,c.FILM_TITLE
+        ,e.PERSON_ID
+          ,f.PERSON_NAME AS DIRECTOR_NAME
+        ,COALESCE(julianday(d.WATCH_DATE) - julianday("2020-12-31"), 0) AS LETTERBOXD_DAYS
+      
+      FROM WATCHED a
+      INNER JOIN ALL_FEATURE_FILMS b
+      ON a.FILM_ID = b.FILM_ID
+      LEFT JOIN FILM_TITLE c
+      ON a.FILM_ID = c.FILM_ID
+      LEFT JOIN (SELECT * FROM DIARY WHERE FIRST_TIME_WATCH = 1) d
+      ON a.FILM_ID = d.FILM_ID
+      LEFT JOIN FILM_CREW e
+      ON a.FILM_ID = e.FILM_ID
+      LEFT JOIN PERSON_INFO f
+      ON e.PERSON_ID = f.PERSON_ID
+      
+      WHERE e.job = 'Director'
+      AND f.PERSON_NAME IS NOT NULL
+      )
+
+    , TOTAL_FILMS_WATCHED AS (
+
+      SELECT
+        PERSON_ID
+        ,COUNT(*) AS TOTAL_FILMS_WATCHED
+      FROM DIRECTOR_DIARY
+      GROUP BY PERSON_ID
+
+    )
+      
+    SELECT
+
+      a.PERSON_ID
+      ,a.DIRECTOR_NAME
+      ,a.LETTERBOXD_DAYS
+      ,SUM(COUNT(*)) OVER (PARTITION BY a.PERSON_ID ORDER BY a.LETTERBOXD_DAYS) AS CUMULATIVE_FILMS
+      
+    FROM DIRECTOR_DIARY a
+    LEFT JOIN TOTAL_FILMS_WATCHED b
+    ON a.PERSON_ID = b.PERSON_ID
+    WHERE b.TOTAL_FILMS_WATCHED >= 5
+    GROUP BY a.PERSON_ID, a.DIRECTOR_NAME, a.LETTERBOXD_DAYS
+    ORDER BY a.LETTERBOXD_DAYS, a.PERSON_ID
+
 actor_completion_query:
   sql: |
     WITH BASE_TABLE AS (
@@ -417,6 +474,7 @@ actor_completion_query:
         ,e.PERSON_NAME AS ACTOR_NAME
         ,CASE WHEN c.FILM_ID IS NULL THEN 0 ELSE 1 END AS WATCHED
         ,CASE WHEN f.FILM_RATING_SCALED IS NOT NULL THEN 1 ELSE 0 END AS RATED
+        ,f.FILM_RATING_SCALED
     
       FROM ALL_FEATURE_FILMS a
       
@@ -447,6 +505,7 @@ actor_completion_query:
       ,AVG(WATCHED) AS PERCENT_WATCHED
       ,SUM(RATED) AS FILMS_RATED
       ,AVG(RATED) AS PERCENT_RATED
+      ,AVG(FILM_RATING_SCALED) AS MEAN_RATING
       
     FROM BASE_TABLE
     
@@ -461,6 +520,7 @@ actor_film_level_query:
     SELECT
 
        d.FILM_TITLE
+      ,b.PERSON_ID
       ,e.PERSON_NAME AS ACTOR_NAME
       ,CASE WHEN c.FILM_ID IS NULL THEN 0 ELSE 1 END AS WATCHED
       ,f.FILM_YEAR
@@ -498,6 +558,65 @@ actor_film_level_query:
 
     ORDER BY h.FILM_RELEASE_DATE ASC
 
+top_actor_film_level_query:
+  sql: |
+    WITH BASE_TABLE AS (
+
+      SELECT
+
+        a.FILM_ID
+        ,d.FILM_TITLE
+        ,b.PERSON_ID
+        ,e.PERSON_NAME AS ACTOR_NAME
+        ,CASE WHEN c.FILM_ID IS NULL THEN 0 ELSE 1 END AS WATCHED
+        ,CASE WHEN f.FILM_RATING_SCALED IS NOT NULL THEN 1 ELSE 0 END AS RATED
+        ,f.FILM_RATING_SCALED
+    
+      FROM ALL_FEATURE_FILMS a
+      
+      LEFT JOIN FILM_CAST b
+      ON a.FILM_ID = b.FILM_ID
+      
+      LEFT JOIN WATCHED c
+      ON a.FILM_ID = c.FILM_ID
+      
+      LEFT JOIN FILM_TITLE d
+      ON a.FILM_ID = d.FILM_ID
+
+      LEFT JOIN PERSON_INFO e
+      ON b.PERSON_ID = e.PERSON_ID
+
+      LEFT JOIN PERSONAL_RATING f
+      ON a.FILM_ID = f.FILM_ID
+
+      WHERE e.PERSON_NAME IS NOT NULL
+        
+      )
+      
+    , ACTOR_TABLE AS (
+
+      SELECT
+
+        PERSON_ID
+        ,SUM(WATCHED) AS TOTAL_WATCHED
+        
+        FROM BASE_TABLE
+        
+        GROUP BY PERSON_ID
+        
+        HAVING TOTAL_WATCHED >= 20
+    )
+
+    SELECT
+      
+      a.FILM_ID
+      ,a.PERSON_ID
+      ,a.ACTOR_NAME
+      
+    FROM BASE_TABLE a
+    INNER JOIN ACTOR_TABLE b
+    ON a.PERSON_ID = b.PERSON_ID
+
 actor_debut_query:
   sql: |
     SELECT
@@ -511,6 +630,7 @@ actor_debut_query:
       ,ROW_NUMBER() OVER (PARTITION BY d.PERSON_ID ORDER BY c.FILM_RELEASE_DATE) AS FILM_NUMBER
       ,MIN(c.FILM_RELEASE_DATE) OVER (PARTITION BY d.PERSON_ID) AS DEBUT_FILM_RELEASE_DATE
       ,julianday(c.FILM_RELEASE_DATE) - julianday(MIN(c.FILM_RELEASE_DATE) OVER (PARTITION BY d.PERSON_ID)) AS DAYS_SINCE_DEBUT
+      ,julianday(c.FILM_RELEASE_DATE) - julianday(e.DATE_OF_BIRTH) AS AGE_IN_DAYS
 
     FROM ALL_FEATURE_FILMS a
     LEFT JOIN FILM_TITLE b
@@ -526,6 +646,57 @@ actor_debut_query:
 
     WHERE f.TOTAL_FILMS > 30
     AND e.PERSON_NAME IS NOT NULL
+    
+actor_sparklines_query:
+  sql: |
+    WITH ACTOR_DIARY AS (
+
+      SELECT
+      
+        a.FILM_ID
+        ,c.FILM_TITLE
+        ,e.PERSON_ID
+        ,f.PERSON_NAME AS ACTOR_NAME
+        ,COALESCE(julianday(d.WATCH_DATE) - julianday("2020-12-31"), 0) AS LETTERBOXD_DAYS
+      
+      FROM WATCHED a
+      INNER JOIN ALL_FEATURE_FILMS b
+      ON a.FILM_ID = b.FILM_ID
+      LEFT JOIN FILM_TITLE c
+      ON a.FILM_ID = c.FILM_ID
+      LEFT JOIN (SELECT * FROM DIARY WHERE FIRST_TIME_WATCH = 1) d
+      ON a.FILM_ID = d.FILM_ID
+      LEFT JOIN FILM_CAST e
+      ON a.FILM_ID = e.FILM_ID
+      LEFT JOIN PERSON_INFO f
+      ON e.PERSON_ID = f.PERSON_ID
+      
+      WHERE f.PERSON_NAME IS NOT NULL
+      )
+
+    , TOTAL_FILMS_WATCHED AS (
+
+      SELECT
+        PERSON_ID
+        ,COUNT(*) AS TOTAL_FILMS_WATCHED
+      FROM ACTOR_DIARY
+      GROUP BY PERSON_ID
+
+    )
+      
+    SELECT
+
+      a.PERSON_ID
+      ,a.ACTOR_NAME
+      ,a.LETTERBOXD_DAYS
+      ,SUM(COUNT(*)) OVER (PARTITION BY a.PERSON_ID ORDER BY a.LETTERBOXD_DAYS) AS CUMULATIVE_FILMS
+      
+    FROM ACTOR_DIARY a
+    LEFT JOIN TOTAL_FILMS_WATCHED b
+    ON a.PERSON_ID = b.PERSON_ID
+    WHERE b.TOTAL_FILMS_WATCHED >= 10
+    GROUP BY a.PERSON_ID, a.ACTOR_NAME, a.LETTERBOXD_DAYS
+    ORDER BY a.LETTERBOXD_DAYS, a.PERSON_ID
 
 film_score_query:
   sql: |
@@ -573,7 +744,7 @@ film_score_query:
     
     ORDER BY g.FILM_WATCH_COUNT DESC
 
-diary_query_basic:
+diary_query_agg:
   sql: |
 
     SELECT
@@ -587,6 +758,24 @@ diary_query_basic:
     GROUP BY WATCH_DATE
     
     ORDER BY WATCH_DATE ASC
+
+diary_query_detail:
+  sql: |
+
+    SELECT
+   
+      a.WATCH_DATE
+      ,b.FILM_TITLE
+      ,a.FIRST_TIME_WATCH
+      ,c.FILM_RATING_SCALED
+    
+    FROM DIARY a
+    LEFT JOIN FILM_TITLE b
+    ON a.FILM_ID = b.FILM_ID
+    LEFT JOIN PERSONAL_RATING c
+    ON a.FILM_ID = c.FILM_ID
+    WHERE a.IS_NARRATIVE_FEATURE = 1
+    ORDER BY a.WATCH_DATE DESC
 
 top_keyword_query:
   sql: |
@@ -841,3 +1030,86 @@ collection_film_level_query:
     WHERE b.TOTAL_FILMS IS NOT NULL
 
     ORDER BY a.COLLECTION_NAME ASC, a.FILM_YEAR ASC
+
+collections_close_to_completion_query:
+  sql: | 
+
+    WITH BASE_TABLE AS (
+
+      SELECT
+
+        d.FILM_TITLE
+        ,b.COLLECTION_NAME
+        ,CASE WHEN c.FILM_ID IS NULL THEN 0 ELSE 1 END AS WATCHED
+        ,CASE WHEN h.FILM_RATING_SCALED IS NOT NULL THEN 1 ELSE 0 END AS RATED
+        ,e.FILM_YEAR
+        ,f.FILM_WATCH_COUNT
+        ,f.FILM_RATING
+        ,h.FILM_RATING_SCALED
+      
+      FROM ALL_FEATURE_FILMS a
+        
+      LEFT JOIN FILM_COLLECTIONS b
+      ON a.FILM_ID = b.FILM_ID
+        
+      LEFT JOIN WATCHED c
+      ON a.FILM_ID = c.FILM_ID
+        
+      LEFT JOIN FILM_TITLE d
+      ON a.FILM_ID = d.FILM_ID
+
+      LEFT JOIN FILM_YEAR e
+      ON a.FILM_ID = e.FILM_ID
+
+      LEFT JOIN FILM_LETTERBOXD_STATS f
+      ON a.FILM_ID = f.FILM_ID
+
+      LEFT JOIN FILM_RELEASE_INFO g
+      ON a.FILM_ID = g.FILM_ID
+
+      LEFT JOIN PERSONAL_RATING h
+      ON a.FILM_ID = h.FILM_ID
+
+      WHERE b.COLLECTION_ID > 0
+      
+      )
+
+    , COLLECTION_LEVEL AS (
+
+      SELECT
+          
+          COLLECTION_NAME
+          ,COUNT(*) AS TOTAL_FILMS
+          ,SUM(WATCHED) AS FILMS_WATCHED
+          ,AVG(WATCHED) AS PERCENT_WATCHED
+          ,SUM(RATED) AS FILMS_RATED
+          ,AVG(RATED) AS PERCENT_RATED
+          
+        FROM BASE_TABLE
+        
+        GROUP BY COLLECTION_NAME
+
+        HAVING TOTAL_FILMS >= 3 AND FILMS_WATCHED >= 1
+  
+      )
+
+    SELECT
+    
+      a.COLLECTION_NAME
+      ,a.FILM_TITLE
+      ,a.FILM_YEAR
+      ,a.FILM_WATCH_COUNT
+      ,a.FILM_RATING
+      ,b.TOTAL_FILMS
+      ,b.TOTAL_FILMS - b.FILMS_WATCHED AS FILMS_TO_COMPLETE
+
+    FROM BASE_TABLE a
+
+    LEFT JOIN COLLECTION_LEVEL b
+    ON a.COLLECTION_NAME = b.COLLECTION_NAME
+
+    WHERE b.TOTAL_FILMS IS NOT NULL
+    AND FILMS_TO_COMPLETE > 0
+    AND WATCHED = 0
+
+    ORDER BY FILMS_TO_COMPLETE ASC, b.TOTAL_FILMS DESC, a.COLLECTION_NAME ASC, a.FILM_YEAR ASC
