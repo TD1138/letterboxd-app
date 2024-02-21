@@ -55,14 +55,12 @@ def create_movie_metadata_dict(film_id):
     if content_type == 'movie':
         try:
             movie = Movie()
-            # import ipdb; ipdb.set_trace()
             details = movie.details(tmdb_id)
             for k in attrs:
                 movie_metadata_dict[k] = details.get(k, None)
             if len(movie_metadata_dict.get('keywords', {'keywords': []}).get('keywords', [])) == 0:
                 movie_metadata_dict['keywords']['keywords'] = [{'id': -1, 'name': 'none'}]
         except:
-            movie_metadata_dict = None
             update_record('TMDB_ID', 'VALID', 0, film_id)
     elif content_type == 'tv':
         try:
@@ -83,10 +81,7 @@ def create_movie_metadata_dict(film_id):
             if len(movie_metadata_dict.get('keywords', {'keywords': []}).get('keywords', [])) == 0:
                 movie_metadata_dict['keywords']['keywords'] = [{'id': -1, 'name': 'none'}]
         except:
-            movie_metadata_dict = None
             update_record('TMDB_ID', 'VALID', 0, film_id)
-    else:
-        movie_metadata_dict = None
     return movie_metadata_dict
 
 def update_financials(movie_metadata_dict, verbose=False):
@@ -219,24 +214,19 @@ def update_collections(movie_metadata_dict, verbose=False):
 def update_tmbd_metadata(film_id, verbose=False):
     movie_metadata_dict = create_movie_metadata_dict(film_id)
     if verbose: print(movie_metadata_dict)
-    if movie_metadata_dict:
-        update_financials(movie_metadata_dict, verbose=verbose)
-        update_tmdb_stats(movie_metadata_dict, verbose=verbose)
-        update_release_info(movie_metadata_dict, verbose=verbose)
-        update_keywords(movie_metadata_dict, verbose=verbose)
-        update_cast(movie_metadata_dict, verbose=verbose)
-        update_crew(movie_metadata_dict, verbose=verbose)
-        update_collections(movie_metadata_dict, verbose=verbose)
-    # else:
-    #     import ipdb; ipdb.set_trace()
-        # get_cast_from_letterboxd(film_id, verbose=verbose)
+    update_financials(movie_metadata_dict, verbose=verbose)
+    update_tmdb_stats(movie_metadata_dict, verbose=verbose)
+    update_release_info(movie_metadata_dict, verbose=verbose)
+    update_keywords(movie_metadata_dict, verbose=verbose)
+    update_cast(movie_metadata_dict, verbose=verbose)
+    update_crew(movie_metadata_dict, verbose=verbose)
+    update_collections(movie_metadata_dict, verbose=verbose)
     return movie_metadata_dict
     
 def get_tmbd_metadata(film_id, verbose=False):
     movie_metadata_dict = update_tmbd_metadata(film_id, verbose=verbose)
-    if movie_metadata_dict:
-        get_language(movie_metadata_dict, verbose=verbose)
-        get_runtime(movie_metadata_dict, verbose=verbose)
+    get_language(movie_metadata_dict, verbose=verbose)
+    get_runtime(movie_metadata_dict, verbose=verbose)
 
 def create_person_metadata_dict(person_id):
     person_metadata_dict = {'PERSON_ID': person_id}
