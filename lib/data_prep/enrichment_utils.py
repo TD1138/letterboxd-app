@@ -54,13 +54,16 @@ def ingest_film(film_id, verbose=False):
         print('Update of streaming info for {} failed ({})'.format(film_id, e))
     update_ingestion_table(film_id)
 
+def ingest_films(films_to_ingest):
+    for film_id in tqdm(films_to_ingest):
+        ingest_film(film_id)
+
 def ingest_new_films(film_limit=100):
     load_dotenv(override=True)
     total_films_to_ingest = get_new_films()
     films_to_ingest = total_films_to_ingest[:film_limit]
     print('In total, there are {} new films to ingest - ingesting {}'.format(len(total_films_to_ingest), len(films_to_ingest)))
-    for film_id in tqdm(films_to_ingest):
-        ingest_film(film_id)
+    ingest_films(films_to_ingest)
 
 def get_new_people():
     ingested_person_ids = get_person_ids_from_select_statement('SELECT DISTINCT PERSON_ID FROM PERSON_INFO')
@@ -75,6 +78,10 @@ def ingest_person(person_id):
     except Exception as e:
         print('Update of Person metadata for {} failed ({})'.format(person_id, e))
 
+def ingest_people(people_to_ingest):
+    for person_id in tqdm(people_to_ingest):
+        ingest_person(person_id)
+
 def ingest_new_people(person_ids=None, people_limit=500):
     load_dotenv(override=True)
     if person_ids:
@@ -84,5 +91,4 @@ def ingest_new_people(person_ids=None, people_limit=500):
         total_people_to_ingest = get_new_people()
         people_to_ingest = total_people_to_ingest[:people_limit]
     print('In total, there are {} new people to ingest - ingesting {}'.format(len(total_people_to_ingest), len(people_to_ingest)))
-    for person_id in tqdm(people_to_ingest):
-        ingest_person(person_id)
+    ingest_people(people_to_ingest)
