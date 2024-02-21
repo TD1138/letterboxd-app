@@ -2,10 +2,12 @@ from tqdm import tqdm
 from export_utils import refresh_core_tables
 from enrichment_utils import get_all_films, update_all_letterboxd_info, ingest_film, ingest_new_people
 from sqlite_utils import get_from_table, get_film_ids_from_select_statement, select_statement_to_df
-from tmdb_utils import get_tmbd_metadata, update_tmdb_stats
-from error_utils import correct_tmdb_metadata_errors, correct_all_errors
-from update_utils import update_oldest_records, update_oldest_streaming_records, update_oldest_tmdb_metadata_records
+from tmdb_utils import get_tmbd_metadata, update_tmdb_stats, update_tmbd_metadata
+from error_utils import correct_tmdb_metadata_errors, correct_all_errors, correct_letterboxd_stats_errors
+from update_utils import update_oldest_records, update_streaming_records, update_tmdb_metadata_records, update_recent_films, update_upcoming_films, update_most_popular_records, update_letterboxd_stats
 from algo_utils import run_algo
+from selenium_utils import download_letterboxd_zip
+from justwatch_utils import update_streaming_info
 import sys
 
 import warnings
@@ -13,28 +15,19 @@ warnings.filterwarnings("ignore")
 
 select_statement = ("""
 
-SELECT
-     PERSON_ID
-    ,SUM(FILM_WATCH_COUNT) AS TOTAL_FILM_WATCH_COUNT
-FROM (
-    SELECT a.PERSON_ID, b.FILM_WATCH_COUNT
-    FROM FILM_CREW a
-    LEFT JOIN FILM_LETTERBOXD_STATS b
-    ON a.FILM_ID = b.FILM_ID
-    LEFT JOIN PERSON_INFO c
-    ON a.PERSON_ID = c.PERSON_ID
-    WHERE c.PERSON_NAME IS NULL
-    UNION ALL
-    SELECT a.PERSON_ID, b.FILM_WATCH_COUNT
-    FROM FILM_CAST a
-    LEFT JOIN FILM_LETTERBOXD_STATS b
-    ON a.FILM_ID = b.FILM_ID
-    LEFT JOIN PERSON_INFO c
-    ON a.PERSON_ID = c.PERSON_ID
-    WHERE c.PERSON_NAME IS NULL
-    )
-GROUP BY PERSON_ID
-ORDER BY TOTAL_FILM_WATCH_COUNT DESC
+WITH DAYS_SINCE_LAST_STREAMING_UPDATE AS (
+
+SELECT FILM_ID, ROUND(AVG(DAYS_SINCE_LAST_UPDATE), 0) AS DAYS_SINCE_LAST_UPDATE 
+FROM ( SELECT FILM_ID, ROUND(COALESCE(julianday('now') - julianday(CREATED_AT), 99), 0) AS DAYS_SINCE_LAST_UPDATE FROM FILM_STREAMING_SERVICES )
+GROUP BY FILM_ID
+
+)
+
+SELECT a.FILM_ID
+FROM FILM_ALGO_SCORE a
+LEFT JOIN DAYS_SINCE_LAST_STREAMING_UPDATE b
+ON a.FILM_ID = b.FILM_ID
+ORDER BY COALESCE(a.ALGO_SCORE, 0.01) * COALESCE(b.DAYS_SINCE_LAST_UPDATE, 365) DESC
 
 """)
 
@@ -58,8 +51,10 @@ ORDER BY TOTAL_FILM_WATCH_COUNT DESC
 # update_oldest_records(film_limit=10, dryrun=False)
 # refresh_core_tables()
 
-ingest_film('f_0pAgy', verbose=True)
-# update_oldest_streaming_records(films_to_ingest, 5000)
+# ingest_film('f_01Ogu', verbose=True)
+
+# update_streaming_records(get_film_ids_from_select_statement(select_statement), film_limit=20)
+
 # update_oldest_tmdb_metadata_records(['f_0rePK'])
 
 # correct_all_errors(film_ids=None, refresh=False, dryrun=False, film_limit=999)
@@ -67,4 +62,22 @@ ingest_film('f_0pAgy', verbose=True)
 
 # ingest_new_people(people_to_ingest, 10000)
 
-# run_algo(model_type='linear_regression')
+# run_algo()#model_type='decision_tree')
+# update_recent_films(film_limit=500)
+# update_upcoming_films(film_limit=500)
+
+# correct_all_errors(refresh=True)
+
+# update_most_popular_records(film_limit=1000)
+
+# update_tmdb_metadata_records(['f_0idpe'], verbose=True)
+
+# download_letterboxd_zip(hide_actions=False)
+
+# update_streaming_info('f_0i7Q4', verbose=True)
+
+# update_tmbd_metadata('f_0mUqi', verbose=True)
+
+# update_letterboxd_stats('f_012Ci', verbose=True)
+
+run_algo(model_type='linear_regression')
