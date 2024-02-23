@@ -67,9 +67,7 @@ def ingest_new_films(film_limit=100):
 
 def get_new_people():
     ingested_person_ids = get_person_ids_from_select_statement('SELECT DISTINCT PERSON_ID FROM PERSON_INFO')
-    all_person_ids = get_person_ids_from_select_statement('SELECT DISTINCT PERSON_ID FROM (SELECT PERSON_ID FROM FILM_CREW UNION ALL SELECT PERSON_ID FROM FILM_CAST)')
-    new_person_ids = [x for x in all_person_ids if x not in ingested_person_ids and x != -1]
-    new_person_ids = sample(new_person_ids, len(new_person_ids))
+    new_person_ids = get_person_ids_from_select_statement(ranked_person_id_query)
     return new_person_ids
 
 def ingest_person(person_id):
@@ -92,3 +90,52 @@ def ingest_new_people(person_ids=None, people_limit=500):
         people_to_ingest = total_people_to_ingest[:people_limit]
     print('In total, there are {} new people to ingest - ingesting {}'.format(len(total_people_to_ingest), len(people_to_ingest)))
     ingest_people(people_to_ingest)
+
+ranked_person_id_query = """
+
+WITH FILM_PERSON_INFO AS (      
+   
+	SELECT
+   	
+     a.FILM_ID
+   	,b.FILM_WATCH_COUNT
+   	,c.PERSON_ID
+   	
+   FROM ALL_RELEASED_FILMS a
+   LEFT JOIN FILM_LETTERBOXD_STATS b
+   ON a.FILM_ID = b.FILM_ID
+   LEFT JOIN FILM_CAST c
+   ON a.FILM_ID = c.FILM_ID
+   
+   UNION ALL 
+   
+   SELECT
+   	
+     a.FILM_ID
+   	,b.FILM_WATCH_COUNT
+   	,c.PERSON_ID
+   	
+   FROM ALL_RELEASED_FILMS a
+   LEFT JOIN FILM_LETTERBOXD_STATS b
+   ON a.FILM_ID = b.FILM_ID
+   LEFT JOIN FILM_CREW c
+   ON a.FILM_ID = c.FILM_ID
+   WHERE c.JOB = 'Director'
+   
+   )
+   
+   SELECT 
+   
+   	 a.PERSON_ID
+   	,b.PERSON_NAME
+   	,SUM(a.FILM_WATCH_COUNT) AS TOTAL_WATCHES
+   	
+   	FROM FILM_PERSON_INFO a
+   	LEFT JOIN PERSON_INFO b
+   	ON a.PERSON_ID = b.PERSON_ID
+   	WHERE a.PERSON_ID > 0
+    AND b.PERSON_NAME IS NULL
+   	GROUP BY a.PERSON_ID, a.FILM_ID
+   	ORDER BY TOTAL_WATCHES DESC
+   
+ """
