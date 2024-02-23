@@ -237,14 +237,30 @@ def create_person_metadata_dict(person_id):
             person_metadata_dict[person_attrs[k]] = details.get(k, None)
         person_metadata_dict['VALID'] = 1
     except:
-        person_metadata_dict = None
-        update_record('PERSON_INFO', 'VALID', 0, person_id, primary_key='PERSON_ID')
+        person_metadata_dict['VALID'] = 0
     return person_metadata_dict
 
-def update_person_metadata(person_id):
+def update_person_info(person_metadata_dict, verbose=False):
+    person_id = person_metadata_dict.get('PERSON_ID')
+    person_record = {
+        'PERSON_ID': person_id,
+        'PERSON_NAME': person_metadata_dict.get('PERSON_NAME', None),
+        'IMDB_PERSON_ID': person_metadata_dict.get('IMDB_PERSON_ID', None),
+        'GENDER': person_metadata_dict.get('GENDER', None),
+        'DATE_OF_BIRTH': person_metadata_dict.get('DATE_OF_BIRTH', None),
+        'DATE_OF_DEATH': person_metadata_dict.get('DATE_OF_DEATH', None),
+        'KNOWN_FOR_DEPARTMENT': person_metadata_dict.get('KNOWN_FOR_DEPARTMENT', None),
+        'PLACE_OF_BIRTH': person_metadata_dict.get('PLACE_OF_BIRTH', None),
+        'PERSON_POPULARITY': person_metadata_dict.get('PERSON_POPULARITY', None),
+        'VALID': person_metadata_dict.get('VALID', 0),
+        'CREATED_AT': datetime.now()
+    }
+    replace_record('PERSON_INFO', person_record, person_id, primary_key='PERSON_ID')
+    if verbose: print(person_record)
+
+def update_person_metadata(person_id, verbose=False):
     person_metadata_dict = create_person_metadata_dict(person_id)
-    if person_metadata_dict:
-        replace_record('PERSON_INFO', person_metadata_dict, person_id, primary_key='PERSON_ID')
+    update_person_info(person_metadata_dict, verbose=verbose)
 
 def get_person_metadata(person_id):
     update_person_metadata(person_id)
