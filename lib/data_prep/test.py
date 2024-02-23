@@ -2,7 +2,7 @@ from tqdm import tqdm
 from export_utils import refresh_core_tables
 from enrichment_utils import get_all_films, update_all_letterboxd_info, ingest_film, ingest_new_people
 from sqlite_utils import get_from_table, get_film_ids_from_select_statement, select_statement_to_df
-from tmdb_utils import get_tmbd_metadata, update_tmdb_stats, update_tmbd_metadata
+from tmdb_utils import get_tmbd_metadata, update_tmdb_stats, update_tmbd_metadata, update_person_metadata
 from error_utils import correct_tmdb_metadata_errors, correct_all_errors, correct_letterboxd_stats_errors
 from update_utils import update_oldest_records, update_streaming_records, update_tmdb_metadata_records, update_recent_films, update_upcoming_films, update_most_popular_records, update_letterboxd_stats
 from algo_utils import run_algo
@@ -80,4 +80,9 @@ ORDER BY COALESCE(a.ALGO_SCORE, 0.01) * COALESCE(b.DAYS_SINCE_LAST_UPDATE, 365) 
 
 # update_letterboxd_stats('f_012Ci', verbose=True)
 
-run_algo(model_type='linear_regression')
+# run_algo(model_type='linear_regression')
+
+# refresh_core_tables()
+
+update_person_metadata(1, verbose=True)
+update_person_metadata(2, verbose=True)
