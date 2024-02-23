@@ -89,42 +89,42 @@ if 'dfs' not in st.session_state:
     	 size_max=30,
     	 template="plotly_dark"
 		)
-    director_scatter = px.scatter(
-         director_df,
-    	 x='FILMS_WATCHED',
-    	 y='PERCENT_WATCHED',
-         size='TOTAL_FILMS',
-    	 hover_name='DIRECTOR_NAME',
-    	 size_max=30,
-    	 template="plotly_dark"
-		)
-    director_watch_rate_scatter = px.scatter(
-         director_df,
-    	 x='FILMS_WATCHED',
-    	 y='PERCENT_RATED',
-         size='TOTAL_FILMS',
-    	 hover_name='DIRECTOR_NAME',
-    	 size_max=30,
-    	 template="plotly_dark"
-		)
-    actor_scatter = px.scatter(
-         actor_df,
-    	 x='FILMS_WATCHED',
-    	 y='PERCENT_WATCHED',
-         size='TOTAL_FILMS',
-    	 hover_name='ACTOR_NAME',
-    	 size_max=30,
-    	 template="plotly_dark"
-		)
-    actor_watch_rate_scatter = px.scatter(
-         actor_df,
-    	 x='TOTAL_FILMS',
-    	 y='PERCENT_RATED',
-         size='TOTAL_FILMS',
-    	 hover_name='ACTOR_NAME',
-    	 size_max=30,
-    	 template="plotly_dark"
-		)
+    # director_scatter = px.scatter(
+    #      director_df,
+    # 	 x='FILMS_WATCHED',
+    # 	 y='PERCENT_WATCHED',
+    #      size='TOTAL_FILMS',
+    # 	 hover_name='DIRECTOR_NAME',
+    # 	 size_max=30,
+    # 	 template="plotly_dark"
+	# 	)
+    # director_watch_rate_scatter = px.scatter(
+    #      director_df,
+    # 	 x='FILMS_WATCHED',
+    # 	 y='PERCENT_RATED',
+    #      size='TOTAL_FILMS',
+    # 	 hover_name='DIRECTOR_NAME',
+    # 	 size_max=30,
+    # 	 template="plotly_dark"
+	# 	)
+    # actor_scatter = px.scatter(
+    #      actor_df,
+    # 	 x='FILMS_WATCHED',
+    # 	 y='PERCENT_WATCHED',
+    #      size='TOTAL_FILMS',
+    # 	 hover_name='ACTOR_NAME',
+    # 	 size_max=30,
+    # 	 template="plotly_dark"
+	# 	)
+    # actor_watch_rate_scatter = px.scatter(
+    #      actor_df,
+    # 	 x='TOTAL_FILMS',
+    # 	 y='PERCENT_RATED',
+    #      size='TOTAL_FILMS',
+    # 	 hover_name='ACTOR_NAME',
+    # 	 size_max=30,
+    # 	 template="plotly_dark"
+	# 	)
     me_vs_lb_df_scatter = px.scatter(
          me_vs_lb_df,
     	 x='FILM_RATING_SCALED',
@@ -157,10 +157,10 @@ if 'dfs' not in st.session_state:
     ratings_basic_hist = px.bar(watched_feature_stats_df[['FILM_RATING_BASIC', 'FILM_ID']].groupby('FILM_RATING_BASIC').count().reset_index(), x="FILM_RATING_BASIC", y='FILM_ID')
     ratings_hist = px.histogram(watched_feature_stats_df, x="FILM_RATING_SCALED", nbins=10, range_x=(0,5))
 
-    director_watched_bar = px.bar(director_df.head(50), x='DIRECTOR_NAME', y='PERCENT_WATCHED')
-    director_watched_bar.update_layout(xaxis={'categoryorder': 'total descending'})
-    director_rated_bar = px.bar(director_df[director_df['PERCENT_RATED'] > 0].sort_values('PERCENT_RATED', ascending=False).head(50), x='DIRECTOR_NAME', y='PERCENT_RATED')
-    director_rated_bar.update_layout(xaxis={'categoryorder': 'total descending'})
+    # director_watched_bar = px.bar(director_df.head(50), x='DIRECTOR_NAME', y='PERCENT_WATCHED')
+    # director_watched_bar.update_layout(xaxis={'categoryorder': 'total descending'})
+    # director_rated_bar = px.bar(director_df[director_df['PERCENT_RATED'] > 0].sort_values('PERCENT_RATED', ascending=False).head(50), x='DIRECTOR_NAME', y='PERCENT_RATED')
+    # director_rated_bar.update_layout(xaxis={'categoryorder': 'total descending'})
 
     actor_hist = px.histogram(actor_df, x="PERCENT_WATCHED", nbins=8, range_x=(0,1.05))
     actor_days_since_debut_altchart = alt.Chart(actor_debut_df).mark_line().encode(x='DAYS_SINCE_DEBUT', y='FILM_NUMBER', color='ACTOR_NAME')
@@ -196,12 +196,12 @@ if 'dfs' not in st.session_state:
     st.session_state['dfs']['ratings_hist'] = ratings_hist
     st.session_state['dfs']['genre_agg_scatter'] = genre_agg_scatter
     st.session_state['dfs']['me_vs_lb_df_scatter'] = me_vs_lb_df_scatter
-    st.session_state['dfs']['director_watched_bar'] = director_watched_bar
-    st.session_state['dfs']['director_rated_bar'] = director_rated_bar
-    st.session_state['dfs']['director_scatter'] = director_scatter
-    st.session_state['dfs']['director_watch_rate_scatter'] = director_watch_rate_scatter
-    st.session_state['dfs']['actor_scatter'] = actor_scatter
-    st.session_state['dfs']['actor_watch_rate_scatter'] = actor_watch_rate_scatter
+    # st.session_state['dfs']['director_watched_bar'] = director_watched_bar
+    # st.session_state['dfs']['director_rated_bar'] = director_rated_bar
+    # st.session_state['dfs']['director_scatter'] = director_scatter
+    # st.session_state['dfs']['director_watch_rate_scatter'] = director_watch_rate_scatter
+    # st.session_state['dfs']['actor_scatter'] = actor_scatter
+    # st.session_state['dfs']['actor_watch_rate_scatter'] = actor_watch_rate_scatter
     st.session_state['dfs']['actor_days_since_debut_altchart'] = actor_days_since_debut_altchart
     st.session_state['dfs']['actor_age_in_days_altchart'] = actor_age_in_days_altchart
     st.session_state['dfs']['actor_letterboxd_days_altchart'] = actor_letterboxd_days_altchart
@@ -378,12 +378,12 @@ with genre_tab:
     st.plotly_chart(st.session_state['dfs']['genre_scatter'], theme='streamlit', use_container_width=True)
 	
 with director_tab:
-    st.plotly_chart(st.session_state['dfs']['director_watched_bar'], theme='streamlit', use_container_width=True)
-    st.plotly_chart(st.session_state['dfs']['director_rated_bar'], theme='streamlit', use_container_width=True)
+    # st.plotly_chart(st.session_state['dfs']['director_watched_bar'], theme='streamlit', use_container_width=True)
+    # st.plotly_chart(st.session_state['dfs']['director_rated_bar'], theme='streamlit', use_container_width=True)
     st.dataframe(director_df, hide_index=True)
     st.dataframe(director_topfive_df.drop('PERSON_ID', axis=1), hide_index=True)
-    st.plotly_chart(st.session_state['dfs']['director_scatter'], theme='streamlit', use_container_width=True)
-    st.plotly_chart(st.session_state['dfs']['director_watch_rate_scatter'], theme='streamlit', use_container_width=True)
+    # st.plotly_chart(st.session_state['dfs']['director_scatter'], theme='streamlit', use_container_width=True)
+    # st.plotly_chart(st.session_state['dfs']['director_watch_rate_scatter'], theme='streamlit', use_container_width=True)
     director_name = st.selectbox('Enter Director:', director_df['DIRECTOR_NAME'].unique())
     director_df_filtered = director_film_level_df[director_film_level_df['DIRECTOR_NAME'] == director_name]
     director_df_filtered['my_rating_vs_letterboxd_mean'] = director_df_filtered['FILM_RATING_SCALED'] - director_df_filtered['FILM_RATING']
@@ -400,8 +400,8 @@ with actor_tab:
     st.plotly_chart(st.session_state['dfs']['actor_watched_bar'], theme='streamlit', use_container_width=True)
     st.plotly_chart(st.session_state['dfs']['actor_rated_bar'], theme='streamlit', use_container_width=True)
     st.dataframe(actor_df, hide_index=True)
-    st.plotly_chart(st.session_state['dfs']['actor_scatter'], theme='streamlit', use_container_width=True)
-    st.plotly_chart(st.session_state['dfs']['actor_watch_rate_scatter'], theme='streamlit', use_container_width=True)
+    # st.plotly_chart(st.session_state['dfs']['actor_scatter'], theme='streamlit', use_container_width=True)
+    # st.plotly_chart(st.session_state['dfs']['actor_watch_rate_scatter'], theme='streamlit', use_container_width=True)
     display_actor_dash = False
     actor_name = st.text_input('Enter Actor:')
     tmp_df = select_statement_to_df('SELECT PERSON_ID, PERSON_NAME FROM PERSON_INFO WHERE REPLACE(PERSON_NAME, ".", "") LIKE "%{}%"'.format(actor_name))
