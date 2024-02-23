@@ -6,6 +6,21 @@ import sys
 sys.path.insert(0, '../data_prep')
 from sqlite_utils import select_statement_to_df
 
+all_film_titles_query = """
+
+SELECT
+
+     a.FILM_TITLE
+    ,b.FILM_YEAR
+    ,a.FILM_ID
+    
+FROM FILM_TITLE a
+
+LEFT JOIN FILM_YEAR b
+ON a.FILM_ID = b.FILM_ID
+
+"""
+
 all_features_query = """
 
 WITH BASE_TABLE AS (
@@ -238,6 +253,8 @@ ranking_columns = [
 
 if 'dfs' not in st.session_state:
     st.session_state['dfs'] = {}
+    all_film_titles = select_statement_to_df(all_film_titles_query)
+    st.session_state['dfs']['all_film_titles'] = all_film_titles
     eligible_watchlist_df = select_statement_to_df(all_features_query)
     keyword_df = select_statement_to_df(keyword_query)
     keyword_df['COUNT'] = 1
@@ -250,8 +267,10 @@ if 'dfs' not in st.session_state:
     top_actor_film_level_df_wide.columns = [actor_lookup_dict.get(x, x) for x in top_actor_film_level_df_wide.columns]
     eligible_watchlist_df = eligible_watchlist_df.merge(top_actor_film_level_df_wide, how='left', on='FILM_ID').fillna(0)
     st.session_state['dfs']['eligible_watchlist_df'] = eligible_watchlist_df
+    
 else:
     eligible_watchlist_df = st.session_state['dfs']['eligible_watchlist_df']
+    all_film_titles = st.session_state['dfs']['all_film_titles']
 
 film_position_max = int(eligible_watchlist_df['FILM_POSITION'].max())
 
@@ -270,16 +289,23 @@ def reset_dash():
     st.session_state['lowest_allowed_position'] = film_position_max
 
 film_name_search = st.text_input('Enter Film Name:', on_change=reset_dash)
+film_name_search_list = film_name_search.split(' ')
+film_name_search_list = [''.join(ch for ch in x if ch.isalnum()) for x in film_name_search_list]
+# st.write(all_film_titles)
+valid_titles = [x[0] for x in all_film_titles[['FILM_TITLE']].values]
+valid_titles = [x[0] + ' (' + str(x[1]) + ') - ' + x[2] for x in all_film_titles.values]
+for word in film_name_search_list:
+    valid_titles = [x for x in valid_titles if word in x.lower()]
+# st.write(valid_titles)
+# tmp_df = select_statement_to_df('SELECT a.FILM_TITLE, b.FILM_YEAR, a.FILM_ID FROM FILM_TITLE a LEFT JOIN FILM_YEAR b ON a.FILM_ID = b.FILM_ID WHERE FILM_TITLE LIKE "%{}%"'.format(film_name_search))
+# tmp_df['display_title'] = tmp_df['FILM_TITLE'] + ' (' + tmp_df['FILM_YEAR'].astype(str) + ')'
+# film_id_lookup_dict = {display_title:film_id for display_title, film_id in zip(tmp_df['display_title'], tmp_df['FILM_ID'])}
 
-tmp_df = select_statement_to_df('SELECT a.FILM_TITLE, b.FILM_YEAR, a.FILM_ID FROM FILM_TITLE a LEFT JOIN FILM_YEAR b ON a.FILM_ID = b.FILM_ID WHERE FILM_TITLE LIKE "%{}%"'.format(film_name_search))
-tmp_df['display_title'] = tmp_df['FILM_TITLE'] + ' (' + tmp_df['FILM_YEAR'].astype(str) + ')'
-film_id_lookup_dict = {display_title:film_id for display_title, film_id in zip(tmp_df['display_title'], tmp_df['FILM_ID'])}
-
-if 0 < len(tmp_df) <= 20: st.session_state['display_dash'] = True
+if 0 < len(valid_titles) <= 20: st.session_state['display_dash'] = True
 
 if st.session_state['display_dash']:
-    selected_film = st.radio('Select Film:', tmp_df['display_title'])
-    selected_film_id = film_id_lookup_dict.get(selected_film)
+    selected_film = st.radio('Select Film:', valid_titles)
+    selected_film_id = selected_film.split(' - ')[-1]
     selected_record = eligible_watchlist_df[eligible_watchlist_df['FILM_ID']==selected_film_id]
     valid_df = eligible_watchlist_df[eligible_watchlist_df['FILM_POSITION'].notnull()]
     col1, col2 = st.columns([1,1])
