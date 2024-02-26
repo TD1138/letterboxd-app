@@ -78,6 +78,8 @@ def create_movie_metadata_dict(film_id):
                 movie_metadata_dict['runtime'] = None
             movie_metadata_dict['keywords']['keywords'] = movie_metadata_dict['keywords'].pop('results')
             movie_metadata_dict['status'] = movie_metadata_dict['status'].replace('Returning Series', 'Released').replace('Ended', 'Released')
+            movie_metadata_dict['budget'] = 0
+            movie_metadata_dict['revenue'] = 0
             if len(movie_metadata_dict.get('keywords', {'keywords': []}).get('keywords', [])) == 0:
                 movie_metadata_dict['keywords']['keywords'] = [{'id': -1, 'name': 'none'}]
         except:
