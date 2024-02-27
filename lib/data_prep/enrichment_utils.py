@@ -3,7 +3,7 @@ from tqdm import tqdm
 from export_utils import exportfile_to_df, convert_uri_to_id
 from sqlite_utils import table_to_df, update_ingestion_table, get_person_ids_from_select_statement
 from letterboxd_utils import update_all_letterboxd_info
-from tmdb_utils import get_tmbd_metadata, get_person_metadata
+from tmdb_utils import update_tmbd_metadata, get_person_metadata
 from justwatch_utils import update_streaming_info
 from dotenv import load_dotenv
 
@@ -45,7 +45,7 @@ def ingest_film(film_id, verbose=False):
     except Exception as e:
         print('Update of Letterboxd info for {} failed ({})'.format(film_id, e))
     try:
-        get_tmbd_metadata(film_id, verbose=verbose)
+        update_tmbd_metadata(film_id, verbose=verbose)
     except Exception as e:
         print('Update of film metadata info for {} failed ({})'.format(film_id, e))
     try:

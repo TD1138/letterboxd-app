@@ -114,7 +114,7 @@ def update_tmdb_stats(movie_metadata_dict, verbose=False):
     replace_record('FILM_TMDB_STATS', tmdb_stats_record, film_id)
     if verbose: print(tmdb_stats_record)
 
-def get_language(movie_metadata_dict, verbose=False):
+def update_language(movie_metadata_dict, verbose=False):
     film_id = movie_metadata_dict.get('FILM_ID')
     original_language = movie_metadata_dict.get('original_language', None)
     language_record = {
@@ -125,7 +125,7 @@ def get_language(movie_metadata_dict, verbose=False):
     replace_record('FILM_LANGUAGE', language_record, film_id)
     if verbose: print(language_record)
 
-def get_runtime(movie_metadata_dict, verbose=False):
+def update_runtime(movie_metadata_dict, verbose=False):
     film_id = movie_metadata_dict.get('FILM_ID')
     runtime = movie_metadata_dict.get('runtime', None)
     runtime_record = {
@@ -223,12 +223,9 @@ def update_tmbd_metadata(film_id, verbose=False):
     update_cast(movie_metadata_dict, verbose=verbose)
     update_crew(movie_metadata_dict, verbose=verbose)
     update_collections(movie_metadata_dict, verbose=verbose)
+    update_runtime(movie_metadata_dict, verbose=verbose)
+    update_language(movie_metadata_dict, verbose=verbose)
     return movie_metadata_dict
-    
-def get_tmbd_metadata(film_id, verbose=False):
-    movie_metadata_dict = update_tmbd_metadata(film_id, verbose=verbose)
-    get_language(movie_metadata_dict, verbose=verbose)
-    get_runtime(movie_metadata_dict, verbose=verbose)
 
 def create_person_metadata_dict(person_id):
     person_metadata_dict = {'PERSON_ID': person_id}

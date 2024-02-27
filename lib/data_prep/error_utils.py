@@ -1,7 +1,7 @@
 from tqdm import tqdm
 from sqlite_utils import get_film_ids_from_select_statement
 from enrichment_utils import ingest_film
-from tmdb_utils import update_tmbd_metadata, get_tmbd_metadata
+from tmdb_utils import update_tmbd_metadata
 from letterboxd_utils import get_ext_ids_plus_content_type, get_metadata_from_letterboxd, update_letterboxd_stats
 from dotenv import load_dotenv
 
@@ -159,7 +159,7 @@ def correct_collection_name_mismatches(film_ids=None, refresh=False, dryrun=Fals
             if refresh:
                 ingest_film(film_id)
             else:
-                get_tmbd_metadata(film_id)
+                update_tmbd_metadata(film_id)
         except:
             errors += 1
     successful_films = len(films_to_correct) - errors
@@ -451,15 +451,21 @@ runtime_select_statement = ("""
 
 SELECT
 
-	a.FILM_ID
+	 a.FILM_ID
+    ,COALESCE(julianday('now') - julianday(b.CREATED_AT), 99) AS DAYS_SINCE_LAST_UPDATE
 
 FROM ALL_FILMS a
 
 LEFT JOIN FILM_RUNTIME b
 ON a.FILM_ID = b.FILM_ID
+                            
+LEFT JOIN TMDB_ID c
+ON a.FILM_ID = c.FILM_ID
 
 WHERE COALESCE(b.FILM_RUNTIME, 0) = 0
-
+AND c.VALID = 1
+AND DAYS_SINCE_LAST_UPDATE > 7
+                            
 """)
 
 collection_issue_select_statement = ("""
