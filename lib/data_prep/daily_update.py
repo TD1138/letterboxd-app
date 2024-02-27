@@ -4,6 +4,7 @@ from enrichment_utils import ingest_new_films, ingest_new_people
 from error_utils import correct_all_errors
 from update_utils import update_oldest_records, update_most_popular_records, update_recent_films, update_upcoming_films
 from algo_utils import run_algo
+from letterboxd_utils import update_letterboxd_top_250
 import sys
 
 import warnings
@@ -20,6 +21,7 @@ else:
 ingest_new_films()
 ingest_new_people()
 correct_all_errors()
+update_letterboxd_top_250()
 update_oldest_records()
 update_most_popular_records()
 update_recent_films()

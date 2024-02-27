@@ -4,7 +4,7 @@ import json
 import requests
 from datetime import datetime
 from bs4 import BeautifulSoup
-from sqlite_utils import get_from_table, insert_record_into_table, delete_records, replace_record, update_record, update_ingestion_table, df_to_table
+from sqlite_utils import get_from_table, insert_record_into_table, delete_records, replace_record, update_record, update_ingestion_table, df_to_table, table_to_df
 from tmdbv3api import Person
 
 def get_metadata_from_letterboxd(film_id, verbose=False):
@@ -84,16 +84,18 @@ def get_cast_from_letterboxd(film_id, verbose=False):
 #     delete_records('FILM_CAST', film_id)
 #     df_to_table(pd.DataFrame(cast_record), 'FILM_CAST', replace_append='append', verbose=False)
 #     if verbose: print(cast_record)
-
-def get_letterboxd_top250_status(film_id):
-    film_url_title = get_from_table('FILM_URL_TITLE', film_id, 'FILM_URL_TITLE')
-    r = requests.get('https://letterboxd.com/esi/film/{}/stats/'.format(film_url_title))
-    soup = BeautifulSoup(r.content, 'lxml')
-    try:
-        top_250_status = int(soup.find('a', {'class': 'has-icon icon-top250 icon-16 tooltip'}).text)
-    except:
-        top_250_status = None
-    return top_250_status
+    
+def update_letterboxd_top_250():
+    top_250_url_titles = []
+    for p in [1, 2, 3]:
+        r = requests.get('https://letterboxd.com/dave/list/official-top-250-narrative-feature-films/page/{}/'.format(p))
+        soup = BeautifulSoup(r.content, 'lxml')
+        top_250_url_titles += [x.find('div').get('data-film-slug') for x in soup.findAll('li', {'class': 'poster-container numbered-list-item'})]
+    top_250_url_titles_df = pd.DataFrame(top_250_url_titles, columns=['FILM_URL_TITLE'])
+    top_250_url_titles_df['TOP_250_POSITION'] = range(1, 251, 1)
+    film_url_title_df = table_to_df('FILM_URL_TITLE')
+    top_250_url_titles_df_plus_filmid = top_250_url_titles_df.merge(film_url_title_df[['FILM_URL_TITLE', 'FILM_ID']], how='left', on='FILM_URL_TITLE')
+    df_to_table(top_250_url_titles_df_plus_filmid[['FILM_ID', 'TOP_250_POSITION']], 'FILM_LETTERBOXD_TOP_250', replace_append='replace', verbose=False)
 
 def get_letterboxd_rating(film_id):
     letterboxd_url = get_from_table('FILM_TITLE', film_id, 'LETTERBOXD_URL')
@@ -147,7 +149,6 @@ def update_letterboxd_stats(film_id, verbose=False):
         'FILM_LIKES_COUNT': metrics_dict['likes'],
         'FILM_REVIEW_COUNT': metrics_dict['reviews'],
         'FILM_LIST_COUNT': metrics_dict['lists'],
-        'FILM_TOP_250': get_letterboxd_top250_status(film_id),
         'FILM_RATING': rating_mean,
         'FILM_RATING_COUNT': rating_count,
         'CREATED_AT': datetime.now()

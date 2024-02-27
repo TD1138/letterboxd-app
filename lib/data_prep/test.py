@@ -8,6 +8,7 @@ from update_utils import update_oldest_records, update_streaming_records, update
 from algo_utils import run_algo
 from selenium_utils import download_letterboxd_zip
 from justwatch_utils import update_streaming_info
+from letterboxd_utils import update_letterboxd_top_250
 import sys
 
 import warnings
@@ -77,7 +78,8 @@ ORDER BY COALESCE(a.ALGO_SCORE, 0.01) * COALESCE(b.DAYS_SINCE_LAST_UPDATE, 365) 
 # update_tmbd_metadata('f_0mUqi', verbose=True)
 
 # update_letterboxd_stats('f_012Ci', verbose=True)
-correct_all_errors()
+# correct_all_errors()
+
 # correct_tmdb_metadata_errors()
 # update_tmbd_metadata('f_0mkbG', verbose=True)
 
@@ -85,3 +87,5 @@ correct_all_errors()
 
 # update_person_metadata(1, verbose=True)
 # update_person_metadata(2, verbose=True)
+
+update_letterboxd_top_250()
