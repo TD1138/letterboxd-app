@@ -2,7 +2,7 @@ from tqdm import tqdm
 from export_utils import refresh_core_tables
 from enrichment_utils import get_all_films, update_all_letterboxd_info, ingest_film, ingest_new_people
 from sqlite_utils import get_from_table, get_film_ids_from_select_statement, select_statement_to_df
-from tmdb_utils import get_tmbd_metadata, update_tmdb_stats, update_tmbd_metadata, update_person_metadata
+from tmdb_utils import update_tmdb_stats, update_tmbd_metadata, update_person_metadata
 from error_utils import correct_tmdb_metadata_errors, correct_all_errors, correct_letterboxd_stats_errors
 from update_utils import update_oldest_records, update_streaming_records, update_tmdb_metadata_records, update_recent_films, update_upcoming_films, update_most_popular_records, update_letterboxd_stats
 from algo_utils import run_algo
@@ -43,7 +43,7 @@ ORDER BY COALESCE(a.ALGO_SCORE, 0.01) * COALESCE(b.DAYS_SINCE_LAST_UPDATE, 365) 
 # 	print('\n', film_id)
 # 	try:
 # 		ingest_film(film_id)
-# 	    # get_tmbd_metadata(film_id)
+# 	    # update_tmbd_metadata(film_id)
 # 		# update_all_letterboxd_info(film_id)
 # 	except Exception as e:
 # 	    print('UPDATE FAILED - {}'.format(e))
@@ -66,8 +66,6 @@ ORDER BY COALESCE(a.ALGO_SCORE, 0.01) * COALESCE(b.DAYS_SINCE_LAST_UPDATE, 365) 
 # update_recent_films(film_limit=500)
 # update_upcoming_films(film_limit=500)
 
-# correct_all_errors(refresh=True)
-
 # update_most_popular_records(film_limit=1000)
 
 # update_tmdb_metadata_records(['f_0idpe'], verbose=True)
@@ -79,10 +77,11 @@ ORDER BY COALESCE(a.ALGO_SCORE, 0.01) * COALESCE(b.DAYS_SINCE_LAST_UPDATE, 365) 
 # update_tmbd_metadata('f_0mUqi', verbose=True)
 
 # update_letterboxd_stats('f_012Ci', verbose=True)
-
-# run_algo(model_type='linear_regression')
+correct_all_errors()
+# correct_tmdb_metadata_errors()
+# update_tmbd_metadata('f_0mkbG', verbose=True)
 
 # refresh_core_tables()
 
-update_person_metadata(1, verbose=True)
-update_person_metadata(2, verbose=True)
+# update_person_metadata(1, verbose=True)
+# update_person_metadata(2, verbose=True)
