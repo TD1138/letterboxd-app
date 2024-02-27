@@ -20,6 +20,7 @@ if 'dfs' not in st.session_state:
     with open('streamlit_queries.yaml', 'r') as file:
         queries = yaml.safe_load(file)
     watchlist_query = queries['watchlist_query']['sql']
+    all_films_query = queries['all_films_query']['sql']
     year_completion_query = queries['year_completion_query']['sql']
     genre_completion_query = queries['genre_completion_query']['sql']
     director_completion_query = queries['director_completion_query']['sql']
@@ -41,6 +42,7 @@ if 'dfs' not in st.session_state:
     collections_close_to_completion_query = queries['collections_close_to_completion_query']['sql']
     
     df = select_statement_to_df(watchlist_query)
+    all_films_df = select_statement_to_df(all_films_query)
     year_df = select_statement_to_df(year_completion_query)
     genre_df = select_statement_to_df(genre_completion_query)
     director_df = select_statement_to_df(director_completion_query)
@@ -172,6 +174,7 @@ if 'dfs' not in st.session_state:
     actor_rated_bar.update_layout(xaxis={'categoryorder': 'total descending'})
 
     st.session_state['dfs']['df'] = df
+    st.session_state['dfs']['all_films_df'] = all_films_df
     st.session_state['dfs']['year_df'] = year_df
     st.session_state['dfs']['genre_df'] = genre_df
     st.session_state['dfs']['director_df'] = director_df
@@ -214,6 +217,7 @@ if 'dfs' not in st.session_state:
     st.session_state['dfs']['genre_scatter'] = genre_scatter
 else:
     df = st.session_state['dfs']['df']
+    all_films_df = st.session_state['dfs']['all_films_df']
     year_df = st.session_state['dfs']['year_df']
     genre_df = st.session_state['dfs']['genre_df']
     director_df = st.session_state['dfs']['director_df']
@@ -290,7 +294,7 @@ df_sorted['SEEN'] = df_sorted['SEEN'].replace({0: 'No', 1: 'Yes'})
 
 df_display = df_sorted[['FILM_TITLE', 'FILM_YEAR', 'ALGO_SCORE', 'STREAMING_SERVICES', 'FILM_WATCH_COUNT', 'FILM_RATING', 'MIN_RENTAL_PRICE']]
 
-watchlist_tab, diary_tab, stats, year_tab, genre_tab, director_tab, actor_tab, collections_tab, filmid_lookup_tab = st.tabs(['Ordered Watchlist', 'Diary Visualisation', 'Statistics', 'Year Completion', 'Genre Completion', 'Director Completion', 'Actor Completion', 'Collections Completion', 'FILM_ID Lookup'])
+watchlist_tab, all_films_tab, diary_tab, stats, year_tab, genre_tab, director_tab, actor_tab, collections_tab, filmid_lookup_tab = st.tabs(['Ordered Watchlist', 'All Films', 'Diary Visualisation', 'Statistics', 'Year Completion', 'Genre Completion', 'Director Completion', 'Actor Completion', 'Collections Completion', 'FILM_ID Lookup'])
 
 with watchlist_tab:
     st.dataframe(df_display, use_container_width=True, hide_index=True)
@@ -340,6 +344,9 @@ with watchlist_tab:
             transposed_df2 = transposed_df2.sort_values(film_names[0]+' SHAP', ascending=False)
         transposed_df2 = transposed_df2.round(3)
         st.dataframe(transposed_df2, use_container_width=True, hide_index=True)
+
+with all_films_tab:
+    st.dataframe(all_films_df, use_container_width=True, height=738, hide_index=True)
 
 with diary_tab:
 	st.line_chart(data=diary_agg_df2, x="WATCH_DATE", y=["MOVIE_COUNT_ROLLING_7", "MOVIE_COUNT_ROLLING_28"])
