@@ -80,7 +80,7 @@ WITH BASE_TABLE AS (
       ,g.FILM_RATING_SCALED
       ,i.FILM_POSITION
       ,c.FILM_WATCH_COUNT
-      ,c.FILM_TOP_250
+      ,k.TOP_250_POSITION AS FILM_TOP_250
       ,c.FILM_RATING
       ,COALESCE(1.0*c.FILM_LIKES_COUNT/c.FILM_WATCH_COUNT, 0.0) AS LIKES_PER_WATCH
       ,COALESCE(1.0*c.FILM_FAN_COUNT/c.FILM_WATCH_COUNT, 0.0) AS FANS_PER_WATCH
@@ -110,6 +110,8 @@ WITH BASE_TABLE AS (
     ON a.FILM_ID = i.FILM_ID
     LEFT JOIN FILM_COLLECTIONS j
     ON a.FILM_ID = j.FILM_ID
+    LEFT JOIN FILM_LETTERBOXD_TOP_250 k
+    ON a.FILM_ID = k.FILM_ID
 
 """
 
@@ -304,7 +306,7 @@ for word in film_name_search_list:
 if 0 < len(valid_titles) <= 20: st.session_state['display_dash'] = True
 
 if st.session_state['display_dash']:
-    selected_film = st.radio('Select Film:', valid_titles)
+    selected_film = st.radio('Select Film:', valid_titles, on_change=reset_dash)
     selected_film_id = selected_film.split(' - ')[-1]
     selected_record = eligible_watchlist_df[eligible_watchlist_df['FILM_ID']==selected_film_id]
     valid_df = eligible_watchlist_df[eligible_watchlist_df['FILM_POSITION'].notnull()]
