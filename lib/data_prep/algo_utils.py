@@ -355,13 +355,13 @@ def run_algo(model_type=default_model):
                     'FILM_TITLE',
                     'FILM_RATING_SCALED',
                     'FILM_RUNTIME',
-                    'FILM_WATCH_COUNT',
-                    'FILM_FAN_COUNT',
+                    # 'FILM_WATCH_COUNT',
+                    # 'FILM_FAN_COUNT',
                     'FILM_YEAR',
-                    'FILM_TOP_250',
-                    'DIRECTOR_MEAN_RATING',
-                    'DIRECTOR_TOTAL_FILMS',
-                    'DIRECTOR_PERCENT_WATCHED',
+                    # 'FILM_TOP_250',
+                    # 'DIRECTOR_MEAN_RATING',
+                    # 'DIRECTOR_TOTAL_FILMS',
+                    # 'DIRECTOR_PERCENT_WATCHED',
                     ]
 
     model_features = [x for x in unrated_features.columns if x not in non_features]
