@@ -10,5 +10,8 @@ db/raw_exports/
 # credentials folder
 creds/
 
+# py cache files
+*.pyc
+
 # MISC
 test.csv
