@@ -23,6 +23,8 @@ if 'dfs' not in st.session_state:
     all_films_query = queries['all_films_query']['sql']
     year_completion_query = queries['year_completion_query']['sql']
     genre_completion_query = queries['genre_completion_query']['sql']
+    keyword_completion_query = queries['keyword_completion_query']['sql']
+    keyword_film_level_query = queries['keyword_film_level_query']['sql']
     director_completion_query = queries['director_completion_query']['sql']
     director_film_level_query = queries['director_film_level_query']['sql']
     director_debut_query = queries['director_debut_query']['sql']
@@ -45,6 +47,8 @@ if 'dfs' not in st.session_state:
     all_films_df = select_statement_to_df(all_films_query)
     year_df = select_statement_to_df(year_completion_query)
     genre_df = select_statement_to_df(genre_completion_query)
+    keyword_df = select_statement_to_df(keyword_completion_query)
+    keyword_film_level_df = select_statement_to_df(keyword_film_level_query)
     director_df = select_statement_to_df(director_completion_query)
     director_film_level_df = select_statement_to_df(director_film_level_query)
     director_debut_df = select_statement_to_df(director_debut_query)
@@ -177,6 +181,8 @@ if 'dfs' not in st.session_state:
     st.session_state['dfs']['all_films_df'] = all_films_df
     st.session_state['dfs']['year_df'] = year_df
     st.session_state['dfs']['genre_df'] = genre_df
+    st.session_state['dfs']['keyword_df'] = keyword_df
+    st.session_state['dfs']['keyword_film_level_df'] = keyword_film_level_df
     st.session_state['dfs']['director_df'] = director_df
     st.session_state['dfs']['director_film_level_df'] = director_film_level_df
     st.session_state['dfs']['director_debut_df'] = director_debut_df
@@ -220,6 +226,8 @@ else:
     all_films_df = st.session_state['dfs']['all_films_df']
     year_df = st.session_state['dfs']['year_df']
     genre_df = st.session_state['dfs']['genre_df']
+    keyword_df = st.session_state['dfs']['keyword_df']
+    keyword_film_level_df = st.session_state['dfs']['keyword_film_level_df']
     director_df = st.session_state['dfs']['director_df']
     director_film_level_df = st.session_state['dfs']['director_film_level_df']
     director_debut_df = st.session_state['dfs']['director_debut_df']
@@ -240,15 +248,18 @@ else:
     shap_df2 = st.session_state['dfs']['shap_df2']
     me_vs_lb_df = st.session_state['dfs']['me_vs_lb_df']
 
-def scale_col(df, column, suffix='', a=0, b=1):
-    col_min = df[column].min()
-    col_max = df[column].max()
-    col_range = (col_max - col_min)
-    if col_range == 0:
-        df[column+suffix] = 0
-    else:
-        df[column+suffix] = ((df[column] - col_min) / col_range) * (b - a) + a
-    return df
+def display_df_with_clickable_letterboxd_link(df, height=None):
+    st.data_editor(
+        df,
+        column_config={
+            'LETTERBOXD_URL': st.column_config.LinkColumn(
+                'LETTERBOXD_URL', display_text='Open in Letterboxd'
+            ),
+        },
+        height=height,
+        use_container_width=True,
+        hide_index=True,
+    )
 
 films_to_show = st.sidebar.number_input('Number of Films to show:', value=100, max_value=1000, step=10)
 
@@ -292,13 +303,12 @@ df = df[(df['FILM_RUNTIME'] >= film_length[0]) & (df['FILM_RUNTIME'] <= film_len
 df_sorted = df.sort_values('ALGO_SCORE', ascending=False).reset_index(drop=True)
 df_sorted['SEEN'] = df_sorted['SEEN'].replace({0: 'No', 1: 'Yes'})
 
-df_display = df_sorted[['FILM_TITLE', 'FILM_YEAR', 'ALGO_SCORE', 'STREAMING_SERVICES', 'FILM_WATCH_COUNT', 'FILM_RATING', 'MIN_RENTAL_PRICE']]
+df_display = df_sorted[['FILM_TITLE', 'FILM_YEAR', 'LETTERBOXD_URL', 'ALGO_SCORE', 'STREAMING_SERVICES', 'FILM_WATCH_COUNT', 'FILM_RATING', 'MIN_RENTAL_PRICE']]
 
-watchlist_tab, all_films_tab, diary_tab, stats, year_tab, genre_tab, director_tab, actor_tab, collections_tab, filmid_lookup_tab = st.tabs(['Ordered Watchlist', 'All Films', 'Diary Visualisation', 'Statistics', 'Year Completion', 'Genre Completion', 'Director Completion', 'Actor Completion', 'Collections Completion', 'FILM_ID Lookup'])
+watchlist_tab, all_films_tab, diary_tab, stats, year_tab, genre_tab, keyword_tab, director_tab, actor_tab, collections_tab, filmid_lookup_tab = st.tabs(['Ordered Watchlist', 'All Films', 'Diary Visualisation', 'Statistics', 'Year Completion', 'Genre Completion', 'Keyword Completion', 'Director Completion', 'Actor Completion', 'Collections Completion', 'FILM_ID Lookup'])
 
 with watchlist_tab:
-    st.dataframe(df_display, use_container_width=True, hide_index=True)
-    # st.dataframe(df)
+    display_df_with_clickable_letterboxd_link(df_display)
     film_runtime_scatter = px.scatter(
         df_sorted.head(films_to_show),
         x='FILM_RUNTIME',
@@ -346,7 +356,7 @@ with watchlist_tab:
         st.dataframe(transposed_df2, use_container_width=True, hide_index=True)
 
 with all_films_tab:
-    st.dataframe(all_films_df, use_container_width=True, height=738, hide_index=True)
+    display_df_with_clickable_letterboxd_link(df_display, height=738)
 
 with diary_tab:
 	st.line_chart(data=diary_agg_df2, x="WATCH_DATE", y=["MOVIE_COUNT_ROLLING_7", "MOVIE_COUNT_ROLLING_28"])
@@ -383,7 +393,13 @@ with genre_tab:
     st.plotly_chart(st.session_state['dfs']['genre_bar'], theme='streamlit', use_container_width=True)
     st.dataframe(genre_df, hide_index=True)
     st.plotly_chart(st.session_state['dfs']['genre_scatter'], theme='streamlit', use_container_width=True)
-	
+
+with keyword_tab:
+    st.dataframe(keyword_df, hide_index=True)
+    keyword = st.selectbox('Enter Keyword:', keyword_df['KEYWORD'].unique())
+    keyword_df_filtered = keyword_film_level_df[keyword_film_level_df['KEYWORD'] == keyword]
+    st.dataframe(keyword_df_filtered, hide_index=True, height=600)
+
 with director_tab:
     # st.plotly_chart(st.session_state['dfs']['director_watched_bar'], theme='streamlit', use_container_width=True)
     # st.plotly_chart(st.session_state['dfs']['director_rated_bar'], theme='streamlit', use_container_width=True)
