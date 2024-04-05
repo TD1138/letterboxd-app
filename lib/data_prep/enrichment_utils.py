@@ -66,7 +66,6 @@ def ingest_new_films(film_limit=100):
     ingest_films(films_to_ingest)
 
 def get_new_people():
-    ingested_person_ids = get_person_ids_from_select_statement('SELECT DISTINCT PERSON_ID FROM PERSON_INFO')
     new_person_ids = get_person_ids_from_select_statement(ranked_person_id_query)
     return new_person_ids
 
