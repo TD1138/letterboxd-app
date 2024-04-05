@@ -4,11 +4,11 @@ from enrichment_utils import get_all_films, update_all_letterboxd_info, ingest_f
 from sqlite_utils import get_from_table, get_film_ids_from_select_statement, select_statement_to_df
 from tmdb_utils import update_tmdb_stats, update_tmbd_metadata, update_person_metadata
 from error_utils import correct_tmdb_metadata_errors, correct_all_errors, correct_letterboxd_stats_errors
-from update_utils import update_oldest_records, update_streaming_records, update_tmdb_metadata_records, update_recent_films, update_upcoming_films, update_most_popular_records, update_letterboxd_stats
+from update_utils import update_oldest_records, update_streaming_records, update_tmdb_metadata_records, update_recent_films, update_upcoming_films, update_most_popular_records, update_letterboxd_stats, update_letterboxd_top_250
 from algo_utils import run_algo
 from selenium_utils import download_letterboxd_zip
 from justwatch_utils import update_streaming_info
-from letterboxd_utils import update_letterboxd_top_250
+from letterboxd_utils import get_letterboxd_top_250
 import sys
 
 import warnings
@@ -63,7 +63,7 @@ ORDER BY COALESCE(a.ALGO_SCORE, 0.01) * COALESCE(b.DAYS_SINCE_LAST_UPDATE, 365) 
 
 # ingest_new_people(people_to_ingest, 10000)
 
-# run_algo()#model_type='decision_tree')
+update_letterboxd_top_250()#model_type='decision_tree')
 # update_recent_films(film_limit=500)
 # update_upcoming_films(film_limit=500)
 
@@ -88,4 +88,4 @@ ORDER BY COALESCE(a.ALGO_SCORE, 0.01) * COALESCE(b.DAYS_SINCE_LAST_UPDATE, 365) 
 # update_person_metadata(1, verbose=True)
 # update_person_metadata(2, verbose=True)
 
-update_letterboxd_top_250()
+# get_letterboxd_top_250()
