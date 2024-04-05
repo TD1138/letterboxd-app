@@ -85,7 +85,7 @@ def get_cast_from_letterboxd(film_id, verbose=False):
 #     df_to_table(pd.DataFrame(cast_record), 'FILM_CAST', replace_append='append', verbose=False)
 #     if verbose: print(cast_record)
     
-def update_letterboxd_top_250():
+def get_letterboxd_top_250():
     top_250_url_titles = []
     for p in [1, 2, 3]:
         r = requests.get('https://letterboxd.com/dave/list/official-top-250-narrative-feature-films/page/{}/'.format(p))
