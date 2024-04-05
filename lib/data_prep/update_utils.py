@@ -82,6 +82,15 @@ def update_most_popular_records(film_ids=None, film_limit=100, dryrun=False, ver
     print('In total, we are going to update the {} most popular record\'s letterboxd stats'.format(film_limit))
     update_letterboxd_stats_records(film_ids=lb_most_popular_records, film_limit=film_limit, dryrun=dryrun, verbose=verbose)
 
+def update_letterboxd_top_250(film_ids=None, film_limit=100, dryrun=False, verbose=False):
+    load_dotenv(override=True)
+    if film_ids:
+        lb_top_250_records = film_ids    
+    else:
+        lb_top_250_records = get_film_ids_from_select_statement(letterboxd_top_250_select_statement)
+    print('In total, we are going to update the {} oldest updated records in the letterboxd top 250'.format(film_limit))
+    update_letterboxd_stats_records(film_ids=lb_top_250_records, film_limit=film_limit, dryrun=dryrun, verbose=verbose)
+
 def update_recent_films(film_ids=None, film_limit=100, dryrun=False, verbose=False):
     load_dotenv(override=True)
     if film_ids:
@@ -175,6 +184,29 @@ SELECT
 	,ROUND(POWER(FILM_WATCH_COUNT, 1) * POWER(DAYS_SINCE_LAST_UPDATE, 1.5)) AS SORT_KEY
 FROM BASE_TABLE
 ORDER BY SORT_KEY DESC
+
+""")
+
+letterboxd_top_250_select_statement = ("""
+
+SELECT
+
+	a.FILM_ID
+	,b.FILM_TITLE
+	,c.FILM_WATCH_COUNT
+	,ROUND(COALESCE(julianday('now') - julianday(c.CREATED_AT), 99), 0) AS DAYS_SINCE_LAST_UPDATE
+
+FROM ALL_FEATURE_FILMS a
+LEFT JOIN FILM_TITLE b
+ON a.FILM_ID = b.FILM_ID
+LEFT JOIN FILM_LETTERBOXD_STATS c
+ON a.FILM_ID = c.FILM_ID
+INNER JOIN FILM_LETTERBOXD_TOP_250 d
+ON a.FILM_ID = d.FILM_ID
+
+WHERE DAYS_SINCE_LAST_UPDATE > 7
+
+ORDER BY DAYS_SINCE_LAST_UPDATE DESC
 
 """)
 
