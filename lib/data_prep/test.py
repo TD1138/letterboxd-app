@@ -63,7 +63,7 @@ ORDER BY COALESCE(a.ALGO_SCORE, 0.01) * COALESCE(b.DAYS_SINCE_LAST_UPDATE, 365) 
 
 # ingest_new_people(people_to_ingest, 10000)
 
-update_letterboxd_top_250()#model_type='decision_tree')
+# update_letterboxd_top_250()#model_type='decision_tree')
 # update_recent_films(film_limit=500)
 # update_upcoming_films(film_limit=500)
 
@@ -89,3 +89,5 @@ update_letterboxd_top_250()#model_type='decision_tree')
 # update_person_metadata(2, verbose=True)
 
 # get_letterboxd_top_250()
+
+download_letterboxd_zip(hide_actions=False)
