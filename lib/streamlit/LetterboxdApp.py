@@ -42,6 +42,7 @@ if 'dfs' not in st.session_state:
     collection_completion_query = queries['collection_completion_query']['sql']
     collection_film_level_query = queries['collection_film_level_query']['sql']
     collections_close_to_completion_query = queries['collections_close_to_completion_query']['sql']
+    diagnostics_query = queries['diagnostics_query']['sql']
     
     df = select_statement_to_df(watchlist_query)
     all_films_df = select_statement_to_df(all_films_query)
@@ -64,6 +65,7 @@ if 'dfs' not in st.session_state:
     collections_close_to_completion_df = select_statement_to_df(collections_close_to_completion_query)
     film_score_df = select_statement_to_df(film_score_query)
     diary_agg_df = select_statement_to_df(diary_query_agg)
+    all_films_df = all_films_df.sort_values('FILM_WATCH_COUNT', ascending=False).reset_index(drop=True)
     diary_agg_df['WATCH_DATE'] = pd.to_datetime(diary_agg_df['WATCH_DATE'])
     date_range = pd.date_range(start=diary_agg_df['WATCH_DATE'].min(), end=diary_agg_df['WATCH_DATE'].max())
     diary_agg_df2 = diary_agg_df.set_index('WATCH_DATE').reindex(date_range).fillna(0).rename_axis('WATCH_DATE').reset_index()
@@ -84,6 +86,7 @@ if 'dfs' not in st.session_state:
     me_vs_lb_df = watched_feature_stats_df[['FILM_ID', 'FILM_TITLE', 'LETTERBOXD_RATING', 'FILM_RATING_SCALED']].dropna(axis=0, subset=['LETTERBOXD_RATING', 'FILM_RATING_SCALED'])
     me_vs_lb_df['VARIANCE'] = me_vs_lb_df['FILM_RATING_SCALED'] - me_vs_lb_df['LETTERBOXD_RATING']
     me_vs_lb_df['ABSOLUTE_VARIANCE'] = abs(me_vs_lb_df['VARIANCE'])
+    diagnostics_df = select_statement_to_df(diagnostics_query)
 
     genre_agg = watched_feature_stats_df.groupby('FILM_GENRE').agg({'FILM_RATING_SCALED': 'mean', 'FILM_ID': 'count'}).reset_index()
     genre_agg.columns = ['Genre', 'Rating_mean', 'Films_watched']
@@ -305,7 +308,7 @@ df_sorted['SEEN'] = df_sorted['SEEN'].replace({0: 'No', 1: 'Yes'})
 
 df_display = df_sorted[['FILM_TITLE', 'FILM_YEAR', 'LETTERBOXD_URL', 'ALGO_SCORE', 'STREAMING_SERVICES', 'FILM_WATCH_COUNT', 'FILM_RATING', 'MIN_RENTAL_PRICE']]
 
-watchlist_tab, all_films_tab, diary_tab, stats, year_tab, genre_tab, keyword_tab, director_tab, actor_tab, collections_tab, filmid_lookup_tab = st.tabs(['Ordered Watchlist', 'All Films', 'Diary Visualisation', 'Statistics', 'Year Completion', 'Genre Completion', 'Keyword Completion', 'Director Completion', 'Actor Completion', 'Collections Completion', 'FILM_ID Lookup'])
+watchlist_tab, all_films_tab, diary_tab, stats, year_tab, genre_tab, keyword_tab, director_tab, actor_tab, collections_tab, filmid_lookup_tab, diagnostics_tab = st.tabs(['Ordered Watchlist', 'All Films', 'Diary Visualisation', 'Statistics', 'Year Completion', 'Genre Completion', 'Keyword Completion', 'Director Completion', 'Actor Completion', 'Collections Completion', 'FILM_ID Lookup', 'Diagnostics'])
 
 with watchlist_tab:
     display_df_with_clickable_letterboxd_link(df_display)
@@ -356,7 +359,14 @@ with watchlist_tab:
         st.dataframe(transposed_df2, use_container_width=True, hide_index=True)
 
 with all_films_tab:
-    display_df_with_clickable_letterboxd_link(df_display, height=738)
+    seen_filter_all = st.radio('Seen:', ['Either', 'Yes', 'No'])
+    if seen_filter_all == 'Yes':
+        all_films_df = all_films_df[all_films_df['SEEN'] == 1]
+    elif seen_filter_all == 'No':
+        all_films_df = all_films_df[all_films_df['SEEN'] == 0]
+    film_watch_count_filter = st.number_input('Film Watch Count:', value=1, max_value=3000000, step=1)
+    all_films_df = all_films_df[all_films_df['FILM_WATCH_COUNT'] >= film_watch_count_filter]
+    display_df_with_clickable_letterboxd_link(all_films_df, height=738)
 
 with diary_tab:
 	st.line_chart(data=diary_agg_df2, x="WATCH_DATE", y=["MOVIE_COUNT_ROLLING_7", "MOVIE_COUNT_ROLLING_28"])
@@ -452,3 +462,6 @@ with filmid_lookup_tab:
     film_id_df = select_statement_to_df('SELECT * FROM FILM_TITLE WHERE (FILM_ID LIKE "%{}%") OR (FILM_TITLE LIKE "%{}%")'.format(film_search, film_search))
     if len(film_id_df) < 50:
         st.dataframe(film_id_df, hide_index=True)
+
+with diagnostics_tab:
+    st.dataframe(diagnostics_df)
