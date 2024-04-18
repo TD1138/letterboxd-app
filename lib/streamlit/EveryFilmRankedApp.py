@@ -87,6 +87,7 @@ WITH BASE_TABLE AS (
       ,h.DIRECTOR_NAME
       ,d.FILM_RUNTIME
       ,f.FILM_YEAR
+      ,f.FILM_DECADE
       ,e.FILM_GENRE
       ,e.ALL_FILM_GENRES
       ,j.COLLECTION_NAME
@@ -248,6 +249,7 @@ ON a.PERSON_ID = b.PERSON_ID
 ranking_columns = [
     'DIRECTOR_NAME',
     'FILM_YEAR',
+    'FILM_DECADE',
     'FILM_GENRE',
     'ALL_FILM_GENRES',
     'COLLECTION_NAME'
@@ -293,12 +295,10 @@ def reset_dash():
 film_name_search = st.text_input('Enter Film Name:', on_change=reset_dash)
 film_name_search_list = film_name_search.split(' ')
 film_name_search_list = [''.join(ch for ch in x if ch.isalnum()) for x in film_name_search_list]
-# st.write(all_film_titles)
 valid_titles = [x[0] for x in all_film_titles[['FILM_TITLE']].values]
 valid_titles = [x[0] + ' (' + str(x[1]) + ') - ' + x[2] for x in all_film_titles.values]
 for word in film_name_search_list:
-    valid_titles = [x for x in valid_titles if word in x.lower()]
-# st.write(valid_titles)
+    valid_titles = [x for x in valid_titles if word in ''.join(ch for ch in x if ch.isalnum()).lower()]
 # tmp_df = select_statement_to_df('SELECT a.FILM_TITLE, b.FILM_YEAR, a.FILM_ID FROM FILM_TITLE a LEFT JOIN FILM_YEAR b ON a.FILM_ID = b.FILM_ID WHERE FILM_TITLE LIKE "%{}%"'.format(film_name_search))
 # tmp_df['display_title'] = tmp_df['FILM_TITLE'] + ' (' + tmp_df['FILM_YEAR'].astype(str) + ')'
 # film_id_lookup_dict = {display_title:film_id for display_title, film_id in zip(tmp_df['display_title'], tmp_df['FILM_ID'])}
