@@ -5,6 +5,7 @@ from error_utils import correct_all_errors
 from update_utils import update_oldest_records, update_most_popular_records, update_letterboxd_top_250, update_recent_films, update_upcoming_films
 from algo_utils import run_algo
 from letterboxd_utils import get_letterboxd_top_250
+from precompute_tables import precompute_tables
 import sys
 
 import warnings
@@ -28,4 +29,5 @@ update_letterboxd_top_250()
 update_recent_films()
 update_upcoming_films()
 run_algo('linear_regression')
+precompute_tables()
 cleanup_exports_folder()
