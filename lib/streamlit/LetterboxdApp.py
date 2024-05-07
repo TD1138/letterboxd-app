@@ -29,7 +29,6 @@ if 'dfs' not in st.session_state:
         if df_name=='watchlist':
             st.session_state['dfs']['algo_features'] = select_statement_to_df('SELECT * FROM FILM_ALGO_SCORE')
             df = df.merge(st.session_state['dfs']['algo_features'][['FILM_ID', 'ALGO_SCORE']], how='left', on='FILM_ID')
-            print(df.head())
         elif df_name == 'all_films':
             df = df.sort_values('FILM_WATCH_COUNT', ascending=False).reset_index(drop=True)
         elif df_name == 'diary_agg':
