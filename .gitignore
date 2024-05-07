@@ -5,7 +5,7 @@
 letterboxd-env/
 
 # local letterboxd exports
-db/raw_exports/
+db/
 
 # credentials folder
 creds/
