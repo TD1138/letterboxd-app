@@ -7,6 +7,7 @@ import dotenv
 dotenv.load_dotenv(override=True)
 
 def set_working_db(db_name):
+    dotenv.load_dotenv(override=True)
     local_db_path = os.getenv('PROJECT_PATH') + '/db/' + db_name
     dotenv.set_key(dotenv.find_dotenv(), 'WORKING_DB', local_db_path)
 
@@ -14,6 +15,7 @@ def db_info(db_path=None):
     '''
     prints out all of the columns of every table in db
     '''
+    dotenv.load_dotenv(override=True)
     if not db_path: db_path=os.getenv('WORKING_DB')
     if db_exists(db_path):
         db_conn = sql.connect(db_path)
@@ -29,6 +31,7 @@ def db_info(db_path=None):
         print('This database has no tables yet!')
 
 def get_list_of_tables():
+    dotenv.load_dotenv(override=True)
     db_conn = sql.connect(os.getenv('WORKING_DB'))
     tables = db_conn.cursor().execute("SELECT name FROM sqlite_master WHERE type='table';").fetchall()
     db_conn.close()
@@ -36,6 +39,7 @@ def get_list_of_tables():
     return tables
 
 def print_table_head(table_name, head=10):
+    dotenv.load_dotenv(override=True)
     db_conn = sql.connect(os.getenv('WORKING_DB'))
     print(pd.read_sql_query("SELECT * from {} LIMIT {}".format(table_name, head), db_conn))
     db_conn.close()
@@ -59,6 +63,7 @@ def db_exists(db_path):
         return False
 
 def df_to_table(df, table_name, replace_append='replace', verbose=False):
+    dotenv.load_dotenv(override=True)
     db_conn = sql.connect(os.getenv('WORKING_DB'))
     try:
         df.columns = [col.upper() for col in df.columns]
@@ -70,6 +75,7 @@ def df_to_table(df, table_name, replace_append='replace', verbose=False):
         print('Error - dataframe couldn\'t be added to the database table {}'.format(table_name))
 
 def drop_table(table_name, verbose=False):
+    dotenv.load_dotenv(override=True)
     db_conn = sql.connect(os.getenv('WORKING_DB'))
     try:
         drop_statement = 'DROP TABLE {}'.format(table_name)
@@ -81,6 +87,7 @@ def drop_table(table_name, verbose=False):
         print('Error in dropping the table')
 
 def table_to_df(table_name):
+    dotenv.load_dotenv(override=True)
     db_conn = sql.connect(os.getenv('WORKING_DB'))
     select_statement = 'SELECT * FROM {}'.format(table_name)
     df = pd.read_sql(select_statement, db_conn)
@@ -91,6 +98,7 @@ def db_basic_setup(db_name, overwrite=False, verbose=False):
     if db_name[-3:] != '.db':
         print('db name must be a valid name ending in \'.db\'')
         return
+    dotenv.load_dotenv(override=True)
     db_path = os.path.join(os.getenv('PROJECT_PATH'), 'db', db_name)
     if db_exists(db_path) and overwrite:
         os.remove(db_path)
@@ -113,6 +121,7 @@ def db_basic_setup(db_name, overwrite=False, verbose=False):
         return
 
 def get_from_table(table_name, film_id, item=None):
+    dotenv.load_dotenv(override=True)
     db_conn = sql.connect(os.getenv('WORKING_DB'))
     select_statement = 'SELECT * FROM {} WHERE FILM_ID = "{}"'.format(table_name, film_id)
     df = pd.read_sql(select_statement, db_conn)
@@ -130,6 +139,7 @@ def get_from_table(table_name, film_id, item=None):
     return output
 
 def insert_record_into_table(record, table_name):
+    dotenv.load_dotenv(override=True)
     db_conn = sql.connect(os.getenv('WORKING_DB'))
     table_columns = pd.read_sql_query("SELECT * from {} LIMIT 0".format(table_name), db_conn).columns
     record_columns = record.keys()
@@ -144,6 +154,7 @@ def insert_record_into_table(record, table_name):
     db_conn.close()
 
 def delete_records(table_name, film_id, primary_key='FILM_ID'):
+    dotenv.load_dotenv(override=True)
     db_conn = sql.connect(os.getenv('WORKING_DB'))
     c = db_conn.cursor()
     try:
@@ -155,6 +166,7 @@ def delete_records(table_name, film_id, primary_key='FILM_ID'):
     db_conn.close()
 
 def update_record(table_name, column_name, column_value, film_id, primary_key='FILM_ID'):
+    dotenv.load_dotenv(override=True)
     db_conn = sql.connect(os.getenv('WORKING_DB'))
     c = db_conn.cursor()
     try:
@@ -170,6 +182,7 @@ def replace_record(table_name, record, film_id, primary_key='FILM_ID'):
     insert_record_into_table(record, table_name)
 
 def select_statement_to_df(select_statement):
+    dotenv.load_dotenv(override=True)
     db_conn = sql.connect(os.getenv('WORKING_DB'))
     df = pd.read_sql(select_statement, db_conn)
     db_conn.close()
