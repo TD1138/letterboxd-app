@@ -138,7 +138,7 @@ def get_from_table(table_name, film_id, item=None):
         output = output.get(item, '')
     return output
 
-def insert_record_into_table(record, table_name):
+def insert_record_into_table(record, table_name, logging=True, append=False):
     dotenv.load_dotenv(override=True)
     db_conn = sql.connect(os.getenv('WORKING_DB'))
     table_columns = pd.read_sql_query("SELECT * from {} LIMIT 0".format(table_name), db_conn).columns
@@ -147,11 +147,17 @@ def insert_record_into_table(record, table_name):
     if len(missing_from_record) > 0:
         print('There are fields missing from the record so the table cannot be updated ({})'.format(missing_from_record))
         return
-    insert_statement = 'REPLACE INTO {}({}) VALUES({})'.format(table_name, ','.join(table_columns), ','.join(['?']*len(table_columns)))
+    if append:
+        append_str = 'INSERT'
+    else:
+        append_str = 'REPLACE'
+    insert_statement = '{} INTO {} ({}) VALUES({})'.format(append_str, table_name, ','.join(table_columns), ','.join(['?']*len(table_columns)))
     insert_tuple =  tuple([record.get(x) for x in table_columns])
     db_conn.cursor().execute(insert_statement, insert_tuple)
     db_conn.commit()
     db_conn.close()
+    if logging:
+        log_update(record, table_name)
 
 def delete_records(table_name, film_id, primary_key='FILM_ID'):
     dotenv.load_dotenv(override=True)
@@ -165,17 +171,26 @@ def delete_records(table_name, film_id, primary_key='FILM_ID'):
         print("Error executing update statement:", error)
     db_conn.close()
 
-def update_record(table_name, column_name, column_value, film_id, primary_key='FILM_ID'):
+def update_record(table_name, column_name, column_value, film_id, primary_key='FILM_ID', logging=True):
     dotenv.load_dotenv(override=True)
     db_conn = sql.connect(os.getenv('WORKING_DB'))
     c = db_conn.cursor()
     try:
+        update_time = datetime.now()
         c.execute('UPDATE {} SET {} = ? WHERE {} = ?'.format(table_name, column_name, primary_key), (column_value, film_id))
-        c.execute('UPDATE {} SET {} = ? WHERE {} = ?'.format(table_name, 'CREATED_AT', primary_key), (datetime.now(), film_id))
+        c.execute('UPDATE {} SET {} = ? WHERE {} = ?'.format(table_name, 'CREATED_AT', primary_key), (update_time, film_id))
         db_conn.commit()
+        if logging:
+            record = {
+                'FILM_ID': film_id,
+                column_name: column_value,
+                'CREATED_AT': update_time
+                }
+            log_update(record, table_name)
+        db_conn.close()
     except sql.Error as error:
         print("Error executing update statement:", error)
-    db_conn.close()
+        db_conn.close()
 
 def replace_record(table_name, record, film_id, primary_key='FILM_ID'):
     delete_records(table_name, film_id, primary_key)
@@ -207,6 +222,18 @@ def get_person_ids_from_select_statement(select_statement):
 def update_ingestion_table(film_id):
     ingestion_record = {
         'FILM_ID': film_id,
-        'INGESTION_DATETIME': datetime.now()
+        'CREATED_AT': datetime.now()
     }
     replace_record('INGESTED', ingestion_record, film_id)
+
+def log_update(record, table_name):
+    for k, v in record.items():
+        if k not in ['FILM_ID', 'CREATED_AT']:
+            log_record = {
+                'FILM_ID': record['FILM_ID'],
+                'TABLE_NAME': table_name,
+                'COLUMN_NAME': k,
+                'COLUMN_VALUE': v,
+                'CREATED_AT': record['CREATED_AT']
+                }
+            insert_record_into_table(log_record, 'LOGGING', logging=False, append=True)
