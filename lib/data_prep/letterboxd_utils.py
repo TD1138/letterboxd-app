@@ -23,18 +23,6 @@ def get_metadata_from_letterboxd(film_id, verbose=False):
     }
     replace_record('FILM_URL_TITLE', film_url_record, film_id)
     if verbose: print(film_url_record)
-    try:
-        year = soup.find('small', {'class': 'number'}).text
-    except:
-        year = int(datetime.now().strftime('%Y')) + 2
-    film_year_record = {
-        'FILM_ID': film_id,
-        'FILM_YEAR':year,
-        'FILM_DECADE': str(year)[:3]+'0s',
-        'CREATED_AT':datetime.now()
-    }
-    replace_record('FILM_YEAR', film_year_record, film_id)
-    if verbose: print(film_year_record)
     genre_list = [x.get('href').replace('/films/genre/', '').replace('/', '') for x in soup.findAll('a', {'class':'text-slug'}) if '/genre/' in str(x.get('href'))]
     if not genre_list:
         genre_list = ['none']
