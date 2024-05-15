@@ -102,6 +102,12 @@ def refresh_core_tables(verbose=False):
     title_df.columns = ['FILM_ID', 'FILM_TITLE', 'LETTERBOXD_URL']
     df_to_table(title_df, 'FILM_TITLE', replace_append='replace', verbose=verbose)
 
+    year_df = all_films_df[['FILM_ID', 'YEAR']]
+    year_df.columns = ['FILM_ID', 'FILM_YEAR']
+    year_df['FILM_YEAR'] = year_df['FILM_YEAR'].fillna(int(datetime.now().strftime('%Y')) + 2).astype(int)
+    year_df['FILM_DECADE'] = year_df['FILM_YEAR'].apply(lambda x: str(x)[:3]+'0s')
+    df_to_table(year_df, 'FILM_YEAR', replace_append='replace', verbose=verbose)
+
     ranking_list = exportfile_to_df('lists/every-film-ranked.csv', skiprows=3)
     ranking_list['FILM_ID'] = ranking_list['URL'].apply(convert_uri_to_id)
     ranking_list.columns = ['FILM_POSITION', 'FILM_NAME', 'FILM_YEAR', 'LETTERBOXD_URI', 'DESCRIPTION', 'FILM_ID']

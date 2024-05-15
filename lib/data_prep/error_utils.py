@@ -41,11 +41,9 @@ def correct_letterboxd_metadata_errors(film_ids=None, refresh=False, dryrun=Fals
         films_to_correct = total_films_to_correct[:film_limit]
     else:
         title_films_to_correct = get_film_ids_from_select_statement(title_select_statement)
-        year_films_to_correct = get_film_ids_from_select_statement(year_select_statement)
         genre_films_to_correct = get_film_ids_from_select_statement(genre_select_statement)
         total_films_to_correct = list(set(          \
             title_films_to_correct             \
-            + year_films_to_correct           \
             + genre_films_to_correct   \
             ))
         films_to_correct = total_films_to_correct[:film_limit]
@@ -195,27 +193,6 @@ OR c.FILM_URL_TITLE = ""
 AND DAYS_SINCE_LAST_UPDATE > 7
 
 """)
-
-year_select_statement = """
-
-SELECT
-
-	 a.FILM_ID
-	,b.FILM_YEAR
-	,b.FILM_DECADE
-	,COALESCE(julianday('now') - julianday(b.CREATED_AT), 99) AS DAYS_SINCE_LAST_UPDATE
-
-FROM ALL_FILMS a
-
-LEFT JOIN FILM_YEAR b
-ON a.FILM_ID = b.FILM_ID
-
-WHERE b.FILM_ID IS NULL
-OR b.FILM_YEAR = ""
-OR b.FILM_YEAR IS NULL
-AND DAYS_SINCE_LAST_UPDATE > 7
-
-"""
 
 genre_select_statement = """
 
