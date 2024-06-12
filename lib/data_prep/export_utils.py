@@ -13,7 +13,7 @@ def convert_uri_to_id(letterboxd_uri):
     return 'f_'+letterboxd_uri.replace('https://boxd.it/', '').zfill(5)
 
 def unzip_letterboxd_downloads():
-    raw_exports_folder = os.getenv('PROJECT_PATH')+'/db/raw_exports/'
+    raw_exports_folder = '/db/raw_exports/'
     for file in os.listdir(raw_exports_folder):
         if file[-4:] == '.zip':
             file_path = os.path.join(raw_exports_folder, file)
@@ -22,7 +22,7 @@ def unzip_letterboxd_downloads():
             os.remove(file_path)
 
 def get_all_export_folders():
-    letterboxd_exports_folder_dir = os.path.join(os.getenv('PROJECT_PATH'), 'db/raw_exports')
+    letterboxd_exports_folder_dir = 'db/raw_exports'
     letterboxd_export_folders = os.listdir(letterboxd_exports_folder_dir)
     return letterboxd_export_folders
 
@@ -38,7 +38,7 @@ def get_latest_export_date():
 
 def set_latest_export(verbose=False):
     latest_export_filename = 'letterboxd-' + os.getenv('LETTERBOXD_USER') + '-' + get_latest_export_date()
-    latest_export_file_loc = os.path.join(os.getenv('PROJECT_PATH'), 'db/raw_exports') + '/' + latest_export_filename
+    latest_export_file_loc = './db/raw_exports/' + latest_export_filename
     dotenv.set_key(dotenv.find_dotenv(), 'LATEST_EXPORT', latest_export_file_loc)
     if verbose: print('Latest export set to {}'.format(latest_export_file_loc))
 
@@ -50,7 +50,7 @@ def cleanup_exports_folder(folders_to_keep=5):
         folders_to_keep = [sorted(letterboxd_export_folders)[x] for x in ind_to_keep]
         folders_to_delete = [x for x in letterboxd_export_folders if x not in folders_to_keep]
         for folder in folders_to_delete:
-            shutil.rmtree(os.getenv('PROJECT_PATH')+'/db/raw_exports/'+folder)
+            shutil.rmtree('/db/raw_exports/'+folder)
 
 def exportfile_to_df(export_filename, skiprows=None):
     export_df = pd.read_csv(os.path.join(os.getenv('LATEST_EXPORT'), export_filename), skiprows=skiprows)

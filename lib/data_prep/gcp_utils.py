@@ -5,8 +5,7 @@ from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
-service_account_path = os.path.join(os.getenv('PROJECT_PATH'), 'creds/service_account.json')
-credentials = service_account.Credentials.from_service_account_file(service_account_path)
+credentials = service_account.Credentials.from_service_account_file('service_account.json')
 client = storage.Client(credentials=credentials, project='letterboxd-app')
 bucket = client.get_bucket('lb-db')
 

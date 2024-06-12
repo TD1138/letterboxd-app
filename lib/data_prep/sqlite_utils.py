@@ -8,7 +8,7 @@ dotenv.load_dotenv(override=True)
 
 def set_working_db(db_name):
     dotenv.load_dotenv(override=True)
-    local_db_path = os.getenv('PROJECT_PATH') + '/db/' + db_name
+    local_db_path = './db/' + db_name
     dotenv.set_key(dotenv.find_dotenv(), 'WORKING_DB', local_db_path)
 
 def db_info(db_path=None):
@@ -99,7 +99,7 @@ def db_basic_setup(db_name, overwrite=False, verbose=False):
         print('db name must be a valid name ending in \'.db\'')
         return
     dotenv.load_dotenv(override=True)
-    db_path = os.path.join(os.getenv('PROJECT_PATH'), 'db', db_name)
+    db_path = os.path.join('./db', db_name)
     if db_exists(db_path) and overwrite:
         os.remove(db_path)
     with open('db_schema.json', 'r') as schema:

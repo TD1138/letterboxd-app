@@ -12,9 +12,9 @@ load_dotenv(override=True)
 
 SCOPES = ['https://www.googleapis.com/auth/drive']
 
-creds_path = os.path.join(os.getenv('PROJECT_PATH'), 'creds/credentials.json')
-token_path = os.path.join(os.getenv('PROJECT_PATH'), 'creds/token.json')
-service_account_path = os.path.join(os.getenv('PROJECT_PATH'), 'creds/service_account.json')
+creds_path = './creds/credentials.json'
+token_path = './creds/token.json'
+service_account_path = './creds/service_account.json'
 
 credentials = service_account.Credentials.from_service_account_file(service_account_path, scopes= SCOPES)
 service = build('drive', 'v3', credentials=credentials)
