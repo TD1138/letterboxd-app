@@ -12,25 +12,31 @@ import sys
 import warnings
 warnings.filterwarnings("ignore")
 
-download_db()
-if len(sys.argv) > 1:
-    if sys.argv[1] == 'nozip':
+def daily_update(nozip=False):
+    download_db()
+    if nozip:
         print('Proceeding with daily update with no download of letterboxd zip file')
-else:
-    download_letterboxd_zip(hide_actions=True)
-    unzip_letterboxd_downloads()
-    set_latest_export()
-    refresh_core_tables()
-ingest_new_films()
-# ingest_new_people()
-correct_all_errors()
-get_letterboxd_top_250()
-update_oldest_records()
-update_most_popular_records()
-update_letterboxd_top_250()
-update_recent_films()
-update_upcoming_films()
-run_algo('linear_regression')
-precompute_tables()
-cleanup_exports_folder()
-upload_db()
+    else:
+        download_letterboxd_zip(hide_actions=True)
+        unzip_letterboxd_downloads()
+        set_latest_export()
+        refresh_core_tables()
+    ingest_new_films()
+    # ingest_new_people()
+    correct_all_errors()
+    get_letterboxd_top_250()
+    update_oldest_records()
+    update_most_popular_records()
+    update_letterboxd_top_250()
+    update_recent_films()
+    update_upcoming_films()
+    run_algo('linear_regression')
+    precompute_tables()
+    cleanup_exports_folder()
+    upload_db()
+
+if _name__ == '__main__':
+    if len(sys.argv) > 1 and sys.argv[1] == 'nozip':
+        daily_update(nozip=True)
+    else:
+        daily_update()
