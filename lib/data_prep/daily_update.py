@@ -6,8 +6,9 @@ from update_utils import update_oldest_records, update_most_popular_records, upd
 from algo_utils import run_algo
 from letterboxd_utils import get_letterboxd_top_250
 from precompute_tables import precompute_tables
-from gcp_utils import download_db, upload_db
+from gcp_utils import download_db, upload_db, backup_db
 import sys
+from datetime import date
 
 import warnings
 warnings.filterwarnings("ignore")
@@ -34,3 +35,5 @@ run_algo('linear_regression')
 precompute_tables()
 cleanup_exports_folder()
 upload_db()
+if date.today().weekday() == 0:
+    backup_db()

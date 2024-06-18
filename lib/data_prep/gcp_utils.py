@@ -1,6 +1,7 @@
+import os
+from datetime import datetime
 from google.cloud import storage
 from google.oauth2 import service_account
-import os
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
@@ -23,3 +24,7 @@ def download_db():
 
 def upload_db():
     upload_file(os.getenv('WORKING_DB'), 'lb-film.db')
+
+def backup_db():
+    today_formatted = datetime.today().strftime("%Y%m%d")
+    upload_file(os.getenv('WORKING_DB'), 'backups/lb-film-{}.db'.format(today_formatted))
