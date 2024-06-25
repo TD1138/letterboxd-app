@@ -138,7 +138,7 @@ def get_from_table(table_name, film_id, item=None):
         output = output.get(item, '')
     return output
 
-def insert_record_into_table(record, table_name, logging=True, append=False):
+def insert_record_into_table(record, table_name, logging=True, log_reason='UPDATE', append=False):
     dotenv.load_dotenv(override=True)
     db_conn = sql.connect(os.getenv('WORKING_DB'))
     table_columns = pd.read_sql_query("SELECT * from {} LIMIT 0".format(table_name), db_conn).columns
@@ -157,7 +157,7 @@ def insert_record_into_table(record, table_name, logging=True, append=False):
     db_conn.commit()
     db_conn.close()
     if logging:
-        log_update(record, table_name)
+        log_update(record, table_name, log_reason=log_reason)
 
 def delete_records(table_name, film_id, primary_key='FILM_ID'):
     dotenv.load_dotenv(override=True)
@@ -171,7 +171,7 @@ def delete_records(table_name, film_id, primary_key='FILM_ID'):
         print("Error executing update statement:", error)
     db_conn.close()
 
-def update_record(table_name, column_name, column_value, film_id, primary_key='FILM_ID', logging=True):
+def update_record(table_name, column_name, column_value, film_id, primary_key='FILM_ID', logging=True, log_reason='UPDATE'):
     dotenv.load_dotenv(override=True)
     db_conn = sql.connect(os.getenv('WORKING_DB'))
     c = db_conn.cursor()
@@ -186,7 +186,7 @@ def update_record(table_name, column_name, column_value, film_id, primary_key='F
                 column_name: column_value,
                 'CREATED_AT': update_time
                 }
-            log_update(record, table_name)
+            log_update(record, table_name, log_reason=log_reason)
         db_conn.close()
     except sql.Error as error:
         print("Error executing update statement:", error)
@@ -226,7 +226,7 @@ def update_ingestion_table(film_id):
     }
     replace_record('INGESTED', ingestion_record, film_id)
 
-def log_update(record, table_name):
+def log_update(record, table_name, log_reason='UPDATE'):
     for k, v in record.items():
         if k not in ['FILM_ID', 'CREATED_AT']:
             log_record = {
@@ -234,6 +234,7 @@ def log_update(record, table_name):
                 'TABLE_NAME': table_name,
                 'COLUMN_NAME': k,
                 'COLUMN_VALUE': v,
-                'CREATED_AT': record['CREATED_AT']
+                'CREATED_AT': record['CREATED_AT'],
+                'LOG_REASON': log_reason
                 }
             insert_record_into_table(log_record, 'LOGGING', logging=False, append=True)
