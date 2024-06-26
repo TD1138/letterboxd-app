@@ -1,10 +1,10 @@
 from tqdm import tqdm
 from export_utils import refresh_core_tables
-from enrichment_utils import ingest_new_films, get_all_films, update_all_letterboxd_info, ingest_film, ingest_new_people
+from enrichment_utils import ingest_new_films, get_all_films, update_most_popular_films, ingest_film, ingest_new_people
 from sqlite_utils import get_from_table, get_film_ids_from_select_statement, select_statement_to_df
 from tmdb_utils import update_tmdb_stats, update_tmbd_metadata, update_person_metadata
 from error_utils import correct_tmdb_metadata_errors, correct_all_errors, correct_letterboxd_stats_errors
-from update_utils import update_oldest_records, update_streaming_records, update_tmdb_metadata_records, update_recent_films, update_upcoming_films, update_most_popular_records, update_letterboxd_stats, update_letterboxd_top_250
+from update_utils import update_oldest_records, update_streaming_records, update_tmdb_metadata_records, update_recent_films, update_upcoming_films, update_most_popular_films, update_letterboxd_stats, update_letterboxd_top_250
 from algo_utils import run_algo
 from selenium_utils import download_letterboxd_zip
 from justwatch_utils import update_streaming_info
@@ -94,7 +94,7 @@ for film_id in tqdm(films_to_ingest[:ingestion_limit]):
 # update_recent_films(film_limit=500)
 # update_upcoming_films(film_limit=500)
 
-# update_most_popular_records(film_limit=1000)
+# update_most_popular_films(film_limit=1000)
 
 # update_tmdb_metadata_records(['f_0idpe'], verbose=True)
 

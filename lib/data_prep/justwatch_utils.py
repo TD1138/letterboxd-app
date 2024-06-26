@@ -3,12 +3,11 @@ import pandas as pd
 import json
 from datetime import datetime
 from sqlite_utils import get_from_table, delete_records, df_to_table
-# from justwatch import JustWatch
 from simplejustwatchapi.justwatch import search
 
-# TEMP_OVERRIDE since Justwatch API is down:
+# TEMP_OVERRIDE in case Justwatch API goes down:
 
-def update_streaming_info(film_id, verbose=False, TEMP_OVERRIDE=False):
+def update_streaming_info(film_id, log_reason='UPDATE', verbose=False, TEMP_OVERRIDE=False):
     if TEMP_OVERRIDE:
         return None
     with open('my_streaming_services.json', 'r') as schema:
@@ -16,7 +15,6 @@ def update_streaming_info(film_id, verbose=False, TEMP_OVERRIDE=False):
     my_streaming_services_abbr = [x for x in set([x['technical_name'] for x in my_streaming_services]) if len(x) > 0]
     abbr_to_full_dict = {x['technical_name']:x['streaming_service'] for x in my_streaming_services if len(x['provider_abbreviation']) > 0}
     abbr_to_full_dict['rent'] = 'Rental'
-    film_url_title = get_from_table('FILM_URL_TITLE', film_id, 'FILM_URL_TITLE')
     film_title = get_from_table('FILM_TITLE', film_id, 'FILM_TITLE')
     valid_abbr = ['none']
     valid_full = ['none']

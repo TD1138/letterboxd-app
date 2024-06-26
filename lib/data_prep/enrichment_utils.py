@@ -39,24 +39,24 @@ def get_new_films():
     new_film_ids = sample(new_film_ids, len(new_film_ids))
     return new_film_ids
 
-def ingest_film(film_id, verbose=False):
+def ingest_film(film_id, log_reason='INGESTION', verbose=False):
     try:
-        update_all_letterboxd_info(film_id, verbose=verbose)
+        update_all_letterboxd_info(film_id, log_reason=log_reason, verbose=verbose)
     except Exception as e:
         print('Update of Letterboxd info for {} failed ({})'.format(film_id, e))
     try:
-        update_tmbd_metadata(film_id, verbose=verbose)
+        update_tmbd_metadata(film_id, log_reason=log_reason, verbose=verbose)
     except Exception as e:
         print('Update of film metadata info for {} failed ({})'.format(film_id, e))
     try:
-        update_streaming_info(film_id, verbose=verbose)
+        update_streaming_info(film_id, log_reason=log_reason, verbose=verbose)
     except Exception as e:
         print('Update of streaming info for {} failed ({})'.format(film_id, e))
     update_ingestion_table(film_id)
 
-def ingest_films(films_to_ingest):
+def ingest_films(films_to_ingest, log_reason='INGESTION'):
     for film_id in tqdm(films_to_ingest):
-        ingest_film(film_id)
+        ingest_film(film_id, log_reason=log_reason)
 
 def ingest_new_films(film_limit=100):
     load_dotenv(override=True)
