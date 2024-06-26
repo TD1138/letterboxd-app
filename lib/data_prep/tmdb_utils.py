@@ -48,7 +48,7 @@ person_attrs = {
     'popularity': 'PERSON_POPULARITY'
 }
 
-def create_movie_metadata_dict(film_id):
+def create_movie_metadata_dict(film_id, log_reason='INGESTION'):
     tmdb_id = get_from_table('TMDB_ID', film_id, 'TMDB_ID')
     content_type = get_from_table('CONTENT_TYPE', film_id, 'CONTENT_TYPE')
     movie_metadata_dict = {'FILM_ID': film_id}
@@ -61,7 +61,7 @@ def create_movie_metadata_dict(film_id):
             if len(movie_metadata_dict.get('keywords', {'keywords': []}).get('keywords', [])) == 0:
                 movie_metadata_dict['keywords']['keywords'] = [{'id': -1, 'name': 'none'}]
         except:
-            update_record('TMDB_ID', 'VALID', 0, film_id)
+            update_record('TMDB_ID', 'VALID', 0, film_id, log_reason=log_reason)
     elif content_type == 'tv':
         try:
             tv = TV()
@@ -83,10 +83,10 @@ def create_movie_metadata_dict(film_id):
             if len(movie_metadata_dict.get('keywords', {'keywords': []}).get('keywords', [])) == 0:
                 movie_metadata_dict['keywords']['keywords'] = [{'id': -1, 'name': 'none'}]
         except:
-            update_record('TMDB_ID', 'VALID', 0, film_id)
+            update_record('TMDB_ID', 'VALID', 0, film_id, log_reason=log_reason)
     return movie_metadata_dict
 
-def update_financials(movie_metadata_dict, verbose=False):
+def update_financials(movie_metadata_dict, log_reason='UPDATE', verbose=False):
     film_id = movie_metadata_dict.get('FILM_ID')
     budget = movie_metadata_dict.get('budget', None)
     revenue = movie_metadata_dict.get('revenue', None)
@@ -96,10 +96,10 @@ def update_financials(movie_metadata_dict, verbose=False):
         'FILM_REVENUE': revenue,
         'CREATED_AT':datetime.now()
     }
-    replace_record('FILM_FINANCIALS', financials_record, film_id)
+    replace_record('FILM_FINANCIALS', financials_record, film_id, log_reason=log_reason)
     if verbose: print(financials_record)
 
-def update_tmdb_stats(movie_metadata_dict, verbose=False):
+def update_tmdb_stats(movie_metadata_dict, log_reason='UPDATE', verbose=False):
     film_id = movie_metadata_dict.get('FILM_ID')
     popularity = movie_metadata_dict.get('popularity', None)
     vote_count = movie_metadata_dict.get('vote_count', None)
@@ -111,10 +111,10 @@ def update_tmdb_stats(movie_metadata_dict, verbose=False):
         'FILM_VOTE_AVERAGE': vote_average,
         'CREATED_AT':datetime.now()
     }
-    replace_record('FILM_TMDB_STATS', tmdb_stats_record, film_id)
+    replace_record('FILM_TMDB_STATS', tmdb_stats_record, film_id, log_reason=log_reason)
     if verbose: print(tmdb_stats_record)
 
-def update_language(movie_metadata_dict, verbose=False):
+def update_language(movie_metadata_dict, log_reason='UPDATE', verbose=False):
     film_id = movie_metadata_dict.get('FILM_ID')
     original_language = movie_metadata_dict.get('original_language', None)
     language_record = {
@@ -122,10 +122,10 @@ def update_language(movie_metadata_dict, verbose=False):
         'FILM_LANGUAGE': original_language,
         'CREATED_AT':datetime.now()
     }
-    replace_record('FILM_LANGUAGE', language_record, film_id)
+    replace_record('FILM_LANGUAGE', language_record, film_id, log_reason=log_reason)
     if verbose: print(language_record)
 
-def update_runtime(movie_metadata_dict, verbose=False):
+def update_runtime(movie_metadata_dict, log_reason='UPDATE', verbose=False):
     film_id = movie_metadata_dict.get('FILM_ID')
     runtime = movie_metadata_dict.get('runtime', None)
     runtime_record = {
@@ -133,10 +133,10 @@ def update_runtime(movie_metadata_dict, verbose=False):
         'FILM_RUNTIME': runtime,
         'CREATED_AT':datetime.now()
     }
-    replace_record('FILM_RUNTIME', runtime_record, film_id)
+    replace_record('FILM_RUNTIME', runtime_record, film_id, log_reason=log_reason)
     if verbose: print(runtime_record)
 
-def update_release_info(movie_metadata_dict, verbose=False):
+def update_release_info(movie_metadata_dict, log_reason='UPDATE', verbose=False):
     film_id = movie_metadata_dict.get('FILM_ID')
     release_date = movie_metadata_dict.get('release_date', None)
     status = movie_metadata_dict.get('status', None)
@@ -146,10 +146,10 @@ def update_release_info(movie_metadata_dict, verbose=False):
         'FILM_STATUS': status,
         'CREATED_AT': datetime.now()
         }
-    replace_record('FILM_RELEASE_INFO', release_info_record, film_id)
+    replace_record('FILM_RELEASE_INFO', release_info_record, film_id, log_reason=log_reason)
     if verbose: print(release_info_record)
 
-def update_keywords(movie_metadata_dict, verbose=False):
+def update_keywords(movie_metadata_dict, log_reason='UPDATE', verbose=False):
     film_id = movie_metadata_dict.get('FILM_ID')
     keywords = movie_metadata_dict.get('keywords', {'keywords': [{'id': -1, 'name': 'none'}]})
     keywords = keywords.get('keywords', [{'id': -1, 'name': 'none'}])
@@ -165,7 +165,7 @@ def update_keywords(movie_metadata_dict, verbose=False):
     df_to_table(pd.DataFrame(keyword_record), 'FILM_KEYWORDS', replace_append='append', verbose=False)
     if verbose: print(keyword_record)
     
-def update_cast(movie_metadata_dict, verbose=False):
+def update_cast(movie_metadata_dict, log_reason='UPDATE', verbose=False):
     film_id = movie_metadata_dict.get('FILM_ID')
     cast = movie_metadata_dict.get('casts', {'cast': [{'id': -1, 'character': '', 'order':-1}]})
     cast = cast.get('cast')
@@ -182,7 +182,7 @@ def update_cast(movie_metadata_dict, verbose=False):
     df_to_table(pd.DataFrame(cast_record), 'FILM_CAST', replace_append='append', verbose=False)
     if verbose: print(cast_record)
 
-def update_crew(movie_metadata_dict, verbose=False):
+def update_crew(movie_metadata_dict, log_reason='UPDATE', verbose=False):
     film_id = movie_metadata_dict.get('FILM_ID')
     crew = movie_metadata_dict.get('casts', {'crew': [{'id': -1, 'job': ''}]})
     crew = crew.get('crew')
@@ -199,7 +199,7 @@ def update_crew(movie_metadata_dict, verbose=False):
     df_to_table(pd.DataFrame(crew_record), 'FILM_CREW', replace_append='append', verbose=False)
     if verbose: print(crew_record)
 
-def update_collections(movie_metadata_dict, verbose=False):
+def update_collections(movie_metadata_dict, log_reason='UPDATE', verbose=False):
     film_id = movie_metadata_dict.get('FILM_ID')
     collection = movie_metadata_dict.get('belongs_to_collection', {'id': -1, 'name': ''})
     if not collection or len(collection) == 0:
@@ -210,21 +210,21 @@ def update_collections(movie_metadata_dict, verbose=False):
         'COLLECTION_NAME': collection.get('name'),
         'CREATED_AT':datetime.now()
         }
-    replace_record('FILM_COLLECTIONS', collection_record, film_id)
+    replace_record('FILM_COLLECTIONS', collection_record, film_id, log_reason=log_reason)
     if verbose: print(collection_record)
 
-def update_tmbd_metadata(film_id, verbose=False):
-    movie_metadata_dict = create_movie_metadata_dict(film_id)
+def update_tmbd_metadata(film_id, log_reason='UPDATE', verbose=False):
+    movie_metadata_dict = create_movie_metadata_dict(film_id, log_reason=log_reason)
     if verbose: print(movie_metadata_dict)
-    update_financials(movie_metadata_dict, verbose=verbose)
-    update_tmdb_stats(movie_metadata_dict, verbose=verbose)
-    update_release_info(movie_metadata_dict, verbose=verbose)
-    update_keywords(movie_metadata_dict, verbose=verbose)
-    update_cast(movie_metadata_dict, verbose=verbose)
-    update_crew(movie_metadata_dict, verbose=verbose)
-    update_collections(movie_metadata_dict, verbose=verbose)
-    update_runtime(movie_metadata_dict, verbose=verbose)
-    update_language(movie_metadata_dict, verbose=verbose)
+    update_financials(movie_metadata_dict, log_reason=log_reason, verbose=verbose)
+    update_tmdb_stats(movie_metadata_dict, log_reason=log_reason, verbose=verbose)
+    update_release_info(movie_metadata_dict, log_reason=log_reason, verbose=verbose)
+    update_keywords(movie_metadata_dict, log_reason=log_reason, verbose=verbose)
+    update_cast(movie_metadata_dict, log_reason=log_reason, verbose=verbose)
+    update_crew(movie_metadata_dict, log_reason=log_reason, verbose=verbose)
+    update_collections(movie_metadata_dict, log_reason=log_reason, verbose=verbose)
+    update_runtime(movie_metadata_dict, log_reason=log_reason, verbose=verbose)
+    update_language(movie_metadata_dict, log_reason=log_reason, verbose=verbose)
     return movie_metadata_dict
 
 def create_person_metadata_dict(person_id):

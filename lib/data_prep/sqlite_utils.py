@@ -192,9 +192,9 @@ def update_record(table_name, column_name, column_value, film_id, primary_key='F
         print("Error executing update statement:", error)
         db_conn.close()
 
-def replace_record(table_name, record, film_id, primary_key='FILM_ID'):
+def replace_record(table_name, record, film_id, primary_key='FILM_ID', log_reason='UPDATE'):
     delete_records(table_name, film_id, primary_key)
-    insert_record_into_table(record, table_name)
+    insert_record_into_table(record, table_name, log_reason=log_reason)
 
 def select_statement_to_df(select_statement):
     dotenv.load_dotenv(override=True)

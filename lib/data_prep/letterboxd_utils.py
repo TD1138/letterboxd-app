@@ -4,10 +4,10 @@ import json
 import requests
 from datetime import datetime
 from bs4 import BeautifulSoup
-from sqlite_utils import get_from_table, insert_record_into_table, delete_records, replace_record, update_record, update_ingestion_table, df_to_table, table_to_df
+from sqlite_utils import get_from_table, insert_record_into_table, delete_records, replace_record, update_record, df_to_table, table_to_df
 from tmdbv3api import Person
 
-def get_metadata_from_letterboxd(film_id, verbose=False):
+def get_metadata_from_letterboxd(film_id, log_reason='UPDATE', verbose=False):
     letterboxd_url = get_from_table('FILM_TITLE', film_id, 'LETTERBOXD_URL')
     r = requests.get(letterboxd_url)
     redirected_url = r.url
@@ -21,7 +21,7 @@ def get_metadata_from_letterboxd(film_id, verbose=False):
         'FILM_URL_TITLE': film,
         'CREATED_AT': datetime.now()
     }
-    replace_record('FILM_URL_TITLE', film_url_record, film_id)
+    replace_record('FILM_URL_TITLE', film_url_record, film_id, log_reason=log_reason)
     if verbose: print(film_url_record)
     genre_list = [x.get('href').replace('/films/genre/', '').replace('/', '') for x in soup.findAll('a', {'class':'text-slug'}) if '/genre/' in str(x.get('href'))]
     if not genre_list:
@@ -32,7 +32,7 @@ def get_metadata_from_letterboxd(film_id, verbose=False):
         'ALL_FILM_GENRES': '/'.join(genre_list),
         'CREATED_AT':datetime.now()
     }
-    replace_record('FILM_GENRE', genre_record, film_id)
+    replace_record('FILM_GENRE', genre_record, film_id, log_reason=log_reason)
     if verbose: print(genre_record)
 
 def get_cast_from_letterboxd(film_id, verbose=False):
@@ -127,7 +127,7 @@ def get_letterboxd_metrics(film_id):
         metrics_dict[i] = metric
     return metrics_dict
 
-def update_letterboxd_stats(film_id, verbose=False):
+def update_letterboxd_stats(film_id, log_reason='UPDATE', verbose=False):
     rating_mean, rating_count = get_letterboxd_rating(film_id)
     metrics_dict = get_letterboxd_metrics(film_id)
     letterboxd_stats_record = {
@@ -141,10 +141,10 @@ def update_letterboxd_stats(film_id, verbose=False):
         'FILM_RATING_COUNT': rating_count,
         'CREATED_AT': datetime.now()
     }
-    insert_record_into_table(letterboxd_stats_record, 'FILM_LETTERBOXD_STATS')
+    insert_record_into_table(letterboxd_stats_record, 'FILM_LETTERBOXD_STATS', log_reason=log_reason)
     if verbose: print(letterboxd_stats_record)
 
-def get_ext_ids_plus_content_type(film_id, verbose=False):
+def get_ext_ids_plus_content_type(film_id, log_reason='UPDATE', verbose=False):
     letterboxd_url = get_from_table('FILM_TITLE', film_id, 'LETTERBOXD_URL')
     r = requests.get(letterboxd_url)
     if r.status_code != 200:
@@ -181,7 +181,7 @@ def get_ext_ids_plus_content_type(film_id, verbose=False):
         'IMDB_ID': imdb_id,
         'CREATED_AT':datetime.now()
     }
-    replace_record('IMDB_ID', imdb_record, film_id)
+    replace_record('IMDB_ID', imdb_record, film_id, log_reason=log_reason)
     if verbose: print(imdb_record)
 
     tmdb_record = {
@@ -190,7 +190,7 @@ def get_ext_ids_plus_content_type(film_id, verbose=False):
         'CREATED_AT':datetime.now(),
         'VALID': tmdb_valid
     }
-    replace_record('TMDB_ID', tmdb_record, film_id)
+    replace_record('TMDB_ID', tmdb_record, film_id, log_reason=log_reason)
     if verbose: print(tmdb_record)
 
     content_record = {
@@ -198,20 +198,19 @@ def get_ext_ids_plus_content_type(film_id, verbose=False):
         'CONTENT_TYPE':content_type,
         'CREATED_AT':datetime.now()
     }
-    replace_record('CONTENT_TYPE', content_record, film_id)
+    replace_record('CONTENT_TYPE', content_record, film_id, log_reason=log_reason)
     if verbose: print(content_record)
 
-def update_all_letterboxd_info(film_id, verbose=False):
+def update_all_letterboxd_info(film_id, log_reason='UPDATE', verbose=False):
     try:
-        get_ext_ids_plus_content_type(film_id, verbose=verbose)
+        get_ext_ids_plus_content_type(film_id, log_reason=log_reason, verbose=verbose)
     except Exception as e:
         print('failed to get the TMDB ID for {} ({})'.format(film_id, e))
     try:
-        get_metadata_from_letterboxd(film_id, verbose=verbose)
+        get_metadata_from_letterboxd(film_id, log_reason=log_reason, verbose=verbose)
     except Exception as e:
         print('failed to get letterboxd metadata for {} ({})'.format(film_id, e))
     try:
-        update_letterboxd_stats(film_id, verbose=verbose)
+        update_letterboxd_stats(film_id, log_reason=log_reason, verbose=verbose)
     except Exception as e:
         print('failed to get letterboxd stats for {} ({})'.format(film_id, e))
-    update_ingestion_table(film_id)

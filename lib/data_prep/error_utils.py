@@ -27,9 +27,9 @@ def correct_letterboxd_stats_errors(film_ids=None, refresh=False, dryrun=False, 
     for film_id in tqdm(films_to_correct):
         try:
             if refresh:
-                ingest_film(film_id)
+                ingest_film(film_id, log_reason='CORRECTION')
             else:
-                update_letterboxd_stats(film_id)
+                update_letterboxd_stats(film_id, log_reason='CORRECTION')
         except:
             errors += 1
     successful_films = len(films_to_correct) - errors
@@ -57,9 +57,9 @@ def correct_letterboxd_metadata_errors(film_ids=None, refresh=False, dryrun=Fals
     for film_id in tqdm(films_to_correct):
         try:
             if refresh:
-                ingest_film(film_id)
+                ingest_film(film_id, log_reason='CORRECTION')
             else:
-                get_metadata_from_letterboxd(film_id)
+                get_metadata_from_letterboxd(film_id, log_reason='CORRECTION')
         except:
             errors += 1
     successful_films = len(films_to_correct) - errors
@@ -89,9 +89,9 @@ def correct_ext_ids_plus_content_type_errors(film_ids=None, refresh=False, dryru
     for film_id in tqdm(films_to_correct):
         try:
             if refresh:
-                ingest_film(film_id)
+                ingest_film(film_id, log_reason='CORRECTION')
             else:
-                get_ext_ids_plus_content_type(film_id)
+                get_ext_ids_plus_content_type(film_id, log_reason='CORRECTION')
         except:
             errors += 1
     successful_films = len(films_to_correct) - errors
@@ -129,9 +129,9 @@ def correct_tmdb_metadata_errors(film_ids=None, refresh=False, dryrun=False, fil
     for film_id in tqdm(films_to_correct):
         try:
             if refresh:
-                ingest_film(film_id)
+                ingest_film(film_id, log_reason='CORRECTION')
             else:
-                update_tmbd_metadata(film_id)
+                update_tmbd_metadata(film_id, log_reason='CORRECTION')
         except:
             errors += 1
     successful_films = len(films_to_correct) - errors
@@ -155,9 +155,9 @@ def correct_collection_name_mismatches(film_ids=None, refresh=False, dryrun=Fals
     for film_id in tqdm(films_to_correct):
         try:
             if refresh:
-                ingest_film(film_id)
+                ingest_film(film_id, log_reason='CORRECTION')
             else:
-                update_tmbd_metadata(film_id)
+                update_tmbd_metadata(film_id, log_reason='CORRECTION')
         except:
             errors += 1
     successful_films = len(films_to_correct) - errors
