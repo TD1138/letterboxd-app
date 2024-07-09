@@ -20,11 +20,20 @@ def download_file(gcs_path, local_destination):
     gcs_object.download_to_filename(local_destination)
 
 def download_db():
-    download_file('lb-film.db', os.getenv('WORKING_DB'))
+    try:
+        download_file('lb-film.db', os.getenv('WORKING_DB'))
+    except:
+        print('db download failed')
 
 def upload_db():
-    upload_file(os.getenv('WORKING_DB'), 'lb-film.db')
+    try:
+        upload_file(os.getenv('WORKING_DB'), 'lb-film.db')
+    except:
+        print('db upload failed')
 
 def backup_db():
     today_formatted = datetime.today().strftime("%Y%m%d")
-    upload_file(os.getenv('WORKING_DB'), 'backups/lb-film-{}.db'.format(today_formatted))
+    try:
+        upload_file(os.getenv('WORKING_DB'), 'backups/lb-film-{}.db'.format(today_formatted))
+    except:
+        print('db upload failed')
