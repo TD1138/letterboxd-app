@@ -384,7 +384,7 @@ def run_algo(model_type=default_model):
     if model_type == 'xgboost':
         model = XGBRegressor()
     elif model_type == 'decision_tree':
-        model = DecisionTreeRegressor(min_samples_leaf=3)
+        model = DecisionTreeRegressor(min_samples_leaf=5)
     elif model_type == 'linear_regression':
         model = LinearRegression()
     model.fit(X_train, y_train)
