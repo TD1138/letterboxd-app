@@ -18,7 +18,7 @@ if len(sys.argv) > 1:
     if sys.argv[1] == 'nozip':
         print('Proceeding with daily update with no download of letterboxd zip file')
 else:
-    download_letterboxd_zip(hide_actions=True)
+    download_letterboxd_zip(hide_actions=False)
     unzip_letterboxd_downloads()
     set_latest_export()
     refresh_core_tables()
