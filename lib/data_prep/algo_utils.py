@@ -400,11 +400,12 @@ def run_algo(model_type=default_model):
     df_to_table(final_df, 'FILM_ALGO_SCORE', replace_append='replace')
     print('Predictions saved!')
     print('Calculating SHAP values...')
-    if model_type == 'xgboost' or model_type == 'decision_tree':
+    if model_type == 'xgboost':
         explainer = shap.TreeExplainer(model, X_train)
+    elif model_type == 'decision_tree':
+        explainer = shap.TreeExplainer(model)
     elif model_type == 'linear_regression':
         explainer = shap.LinearExplainer(model, X_train)
-    # shap_values = explainer.Explainer(X_pred)
     shap_values = explainer.shap_values(X_pred)
     explainer_df = pd.DataFrame(shap_values, columns=model_features)
     explainer_df.insert(0, 'FILM_ID', pred_df['FILM_ID'])
@@ -415,10 +416,6 @@ def run_algo(model_type=default_model):
         ex = explainer.expected_value
     explainer_df.insert(1, 'BASE_VALUE', ex)
     explainer_df['PREDICTION'] = explainer_df.sum(axis=1)
-    explainer_df = explainer_df.merge(pred_df[['FILM_ID', 'ALGO_SCORE']], how='left', on='FILM_ID')
-    explainer_df['SCALER'] = explainer_df['ALGO_SCORE'] / explainer_df['PREDICTION']
-    explainer_df = explainer_df.drop('FILM_ID', axis=1).mul(explainer_df['SCALER'], axis=0).drop(['ALGO_SCORE', 'SCALER'], axis=1) 
-    explainer_df.insert(0, 'FILM_ID', pred_df['FILM_ID'])
     explainer_df = explainer_df.loc[:, (explainer_df != 0).any(axis=0)]
     print('SHAP values calculated!')
     df_to_table(explainer_df, 'FILM_SHAP_VALUES', replace_append='replace')
