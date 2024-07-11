@@ -121,4 +121,4 @@ ORDER BY FILM_YEAR ASC, YEAR_NUMBER ASC
 
 # ingest_new_films(999)
 
-run_algo()
+run_algo(model_type='decision_tree')
