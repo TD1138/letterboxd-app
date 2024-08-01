@@ -54,7 +54,16 @@ if 'dfs' not in st.session_state:
     me_vs_lb_df['VARIANCE'] = me_vs_lb_df['FILM_RATING_SCALED'] - me_vs_lb_df['LETTERBOXD_RATING']
     me_vs_lb_df['ABSOLUTE_VARIANCE'] = abs(me_vs_lb_df['VARIANCE'])
     st.session_state['dfs']['me_vs_lb'] = me_vs_lb_df
-    
+
+    algo_features_rated_df = select_statement_to_df('SELECT * FROM FILM_ALGO_SCORE WHERE ALGO_SCORE IS NULL')
+    non_features = ['FILM_TOP_250', 'FILM_WATCH_COUNT', 'FILM_RATING', 'LIKES_PER_WATCH', 'FANS_PER_WATCH', 'FILM_RUNTIME', 'DIRECTOR_MEAN_RATING', 'DIRECTOR_TOTAL_FILMS', 'DIRECTOR_PERCENT_WATCHED', 'ALGO_SCORE']
+    algo_features_rated_df = select_statement_to_df('SELECT * FROM FILM_ALGO_SCORE WHERE ALGO_SCORE IS NULL')
+    all_features = algo_features_rated_df.columns
+    keep_features = [x for x in all_features if x not in non_features]
+    algo_features_rated_df['IN_LETTERBOXD_TOP_250'] = np.where(algo_features_rated_df['FILM_TOP_250']<251, 1, 0)
+    algo_features_rated_df = algo_features_rated_df[keep_features]
+    st.session_state['dfs']['ranked'] = algo_features_rated_df
+
 
 if 'charts' not in st.session_state:
     st.session_state['charts'] = {}
@@ -140,7 +149,21 @@ df_sorted['SEEN'] = df_sorted['SEEN'].replace({0: 'No', 1: 'Yes'})
 
 df_display = df_sorted[['FILM_TITLE', 'FILM_YEAR', 'LETTERBOXD_URL', 'ALGO_SCORE', 'STREAMING_SERVICES', 'FILM_WATCH_COUNT', 'FILM_RATING', 'MIN_RENTAL_PRICE']]
 
-watchlist_tab, all_films_tab, diary_tab, stats, year_tab, genre_tab, keyword_tab, director_tab, actor_tab, collections_tab, filmid_lookup_tab, diagnostics_tab = st.tabs(['Ordered Watchlist', 'All Films', 'Diary Visualisation', 'Statistics', 'Year Completion', 'Genre Completion', 'Keyword Completion', 'Director Completion', 'Actor Completion', 'Collections Completion', 'FILM_ID Lookup', 'Diagnostics'])
+watchlist_tab, all_films_tab, diary_tab, ranked_tab, stats, year_tab, genre_tab, keyword_tab, director_tab, actor_tab, collections_tab, filmid_lookup_tab, diagnostics_tab = \
+st.tabs(
+    ['Ordered Watchlist',
+     'All Films',
+     'Diary Visualisation',
+     'Ranked',
+     'Statistics',
+     'Year Completion',
+     'Genre Completion',
+     'Keyword Completion',
+     'Director Completion',
+     'Actor Completion',
+     'Collections Completion',
+     'FILM_ID Lookup',
+     'Diagnostics'])
 
 with watchlist_tab:
     display_df_with_clickable_letterboxd_link(df_display)
@@ -200,6 +223,26 @@ with diary_tab:
 	st.line_chart(data=st.session_state['dfs']['diary_agg'], x="WATCH_DATE", y=["MOVIE_RATING_ROLLING_7", "MOVIE_RATING_ROLLING_28"])
 	st.line_chart(data=st.session_state['dfs']['diary_agg'], x="WATCH_DATE", y=["MOVIE_COUNT_ROLLING_7", "MOVIE_COUNT_ROLLING_28", "MOVIE_RATING_ROLLING_7", "MOVIE_RATING_ROLLING_28"])
 	st.dataframe(st.session_state['dfs']['diary_detail'], use_container_width=True, hide_index=True)
+
+with ranked_tab:
+    non_ranking_features = ['FILM_ID', 'FILM_TITLE', 'FILM_RATING_SCALED']
+    selectable_features = [x for x in st.session_state['dfs']['ranked'].columns if x not in non_ranking_features]
+    selected_feature = st.selectbox("Select Feature to show ranking:", selectable_features)
+    if selected_feature:
+        unique_values = st.session_state['dfs']['ranked'][selected_feature].unique()
+        if len(unique_values) == 2:
+            selected_feature_value = 1
+        else:
+            selected_feature_value = st.selectbox("Select Value for Feature to show ranking:", np.sort(unique_values))
+        ranked_df = st.session_state['dfs']['ranked'][st.session_state['dfs']['ranked'][selected_feature] == selected_feature_value].sort_values('FILM_RATING_SCALED', ascending=False).reset_index(drop=True)
+        ranked_df = ranked_df[non_ranking_features]
+        ranked_df['Ranking'] = ranked_df.index + 1
+        mean_ranking = ranked_df['FILM_RATING_SCALED'].mean()
+        st.write(selected_feature+' Ranked!')
+        st.write('Mean rating of {:.2f} vs the top level mean of {:.2f}'.format(mean_ranking, st.session_state['dfs']['ranked']['FILM_RATING_SCALED'].mean()))
+        st.dataframe(ranked_df)
+
+
 
 with stats:
     ratings_basic_hist = px.bar(st.session_state['dfs']['watched_feature_stats'][['FILM_RATING_BASIC', 'FILM_ID']].groupby('FILM_RATING_BASIC').count().reset_index(), x="FILM_RATING_BASIC", y='FILM_ID')
