@@ -221,7 +221,7 @@ with year_tab:
     st.line_chart(data=st.session_state['dfs']['year_completion'], x='FILM_YEAR', y=['MEAN_RATING', 'MY_MEAN_RATING'], use_container_width=True)
     st.dataframe(st.session_state['dfs']['year_completion'], hide_index=True)
     st.plotly_chart(st.session_state['charts']['year_scatter'], theme='streamlit', use_container_width=True)
-    year_selection = st.selectbox('Select a Year:', np.sort(tmp_df['FILM_YEAR'].unique()))
+    year_selection = st.selectbox('Select a Year:', np.sort(st.session_state['dfs']['year_completion']['FILM_YEAR'].unique()))
     algo_features_df_year = st.session_state['dfs']['algo_features'][st.session_state['dfs']['algo_features']['FILM_YEAR'] == year_selection].reset_index(drop=True)
     algo_features_df_year_x = dataframe_explorer(algo_features_df_year)
     st.dataframe(algo_features_df_year_x, use_container_width=True, hide_index=True)
