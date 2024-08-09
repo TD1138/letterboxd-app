@@ -6,14 +6,17 @@ from webdriver_manager.chrome import ChromeDriverManager
 # from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
-import chromedriver_autoinstaller
+# import chromedriver_autoinstaller
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
 def download_letterboxd_zip(hide_actions=True):
     try:
-        service=Service(ChromeDriverManager().install())
+        chrome_install = ChromeDriverManager().install()
+        folder = os.path.dirname(chrome_install)
+        chromedriver_path = os.path.join(folder, "chromedriver.exe")
+        service = Service(chromedriver_path)
         chrome_options = webdriver.ChromeOptions()
         if hide_actions: chrome_options.add_argument("--headless")
         download_dir =  os.getenv('PROJECT_PATH')+'/db/raw_exports/'
