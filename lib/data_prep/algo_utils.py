@@ -349,6 +349,7 @@ def run_algo(model_type=default_model):
     eligible_watchlist_df = eligible_watchlist_df.fillna(0)
     my_rating_df = select_statement_to_df(my_rating_query)
     rating_features_df = eligible_watchlist_df.merge(my_rating_df, how='left', on='FILM_ID')
+    rating_features_df['I_VS_LB'] = rating_features_df['FILM_RATING_SCALED'] - rating_features_df['FILM_RATING']
     rated_features = rating_features_df[rating_features_df['FILM_RATING_SCALED'].notnull()].reset_index(drop=True)
     unrated_features = rating_features_df[rating_features_df['FILM_RATING_SCALED'].isnull()].reset_index(drop=True)
     non_features = ['FILM_ID',
@@ -362,18 +363,22 @@ def run_algo(model_type=default_model):
                     # 'DIRECTOR_MEAN_RATING',
                     # 'DIRECTOR_TOTAL_FILMS',
                     # 'DIRECTOR_PERCENT_WATCHED',
+                    'new jersey',
+                    'philadelphia, pennsylvania',
                     ]
 
     model_features = [x for x in unrated_features.columns if x not in non_features]
+    # import ipdb; ipdb.set_trace()
     delete_cols = []
     for col in model_features:
         col_mean = rated_features[col].mean()
         if col_mean <= .01:
             delete_cols.append(col)
     model_features = [x for x in model_features if x not in delete_cols]
-    target = ['FILM_RATING_SCALED']
+    target = 'I_VS_LB'
+    model_features = [x for x in model_features if x != target]
     X_train = rated_features[model_features]
-    y_train = rated_features[target]
+    y_train = rated_features[[target]]
     print('Data gathering complete!')
     print('Scaling features...')
     scaler = StandardScaler()
@@ -397,6 +402,7 @@ def run_algo(model_type=default_model):
     print('Predictions complete!')
     pred_df = scale_col(pred_df, 'ALGO_SCORE')
     final_df = pd.concat([pred_df, rated_features], axis=0).reset_index(drop=True)
+    # import ipdb; ipdb.set_trace()
     df_to_table(final_df, 'FILM_ALGO_SCORE', replace_append='replace')
     print('Predictions saved!')
     print('Calculating SHAP values...')
