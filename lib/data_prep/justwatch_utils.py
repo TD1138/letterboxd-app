@@ -13,10 +13,10 @@ def update_streaming_info(film_id, log_reason='UPDATE', verbose=False, TEMP_OVER
     with open('my_streaming_services.json', 'r') as schema:
         my_streaming_services = json.load(schema)
     my_streaming_services_abbr = [x for x in set([x['technical_name'] for x in my_streaming_services]) if len(x) > 0]
-    abbr_to_full_dict = {x['technical_name']:x['streaming_service'] for x in my_streaming_services if len(x['provider_abbreviation']) > 0}
+    abbr_to_full_dict = {x['technical_name']:x['streaming_service'] for x in my_streaming_services if len(x['technical_name']) > 0}
     abbr_to_full_dict['rent'] = 'Rental'
     film_title = get_from_table('FILM_TITLE', film_id, 'FILM_TITLE')
-    valid_abbr = ['none']
+    valid_tech_names = ['none']
     valid_full = ['none']
     min_rental_price = None
     valid = 0
@@ -32,27 +32,27 @@ def update_streaming_info(film_id, log_reason='UPDATE', verbose=False, TEMP_OVER
         offers = None
     delete_records('FILM_STREAMING_SERVICES', film_id)
     if offers:
-        provider_abbreviations = list(set([x.technical_name for x in offers if x.monetization_type in ['FLATRATE', 'FREE', 'ADS']]))
-        valid_abbr = [x for x in provider_abbreviations if x in my_streaming_services_abbr]
+        provider_technical_names = list(set([x.technical_name for x in offers if x.monetization_type in ['FLATRATE', 'FREE', 'ADS']]))
+        valid_tech_names = [x for x in provider_technical_names if x in my_streaming_services_abbr]
         min_rental_price = 0
         valid = 1
-        if len(valid_abbr) == 0:
-            valid_abbr = ['rent']
+        if len(valid_tech_names) == 0:
+            valid_tech_names = ['rent']
             rental_prices = [x.price_value for x in offers if x.monetization_type == 'RENT' and x.presentation_type == 'HD' and x.price_value]
             if len(rental_prices) > 0:
                 min_rental_price = min(rental_prices)
             else:
                 min_rental_price = None
                 valid = 0
-        valid_full = [abbr_to_full_dict.get(x) for x in valid_abbr]
+        valid_full = [abbr_to_full_dict.get(x) for x in valid_tech_names]
             
     streaming_record = {
-        'FILM_ID': [film_id]*len(valid_abbr),
-        'STREAMING_SERVICE_ABBR': valid_abbr,
+        'FILM_ID': [film_id]*len(valid_tech_names),
+        'STREAMING_SERVICE_ABBR': valid_tech_names,
         'STREAMING_SERVICE_FULL': valid_full,
-        'CREATED_AT': [datetime.now()]*len(valid_abbr),
-        'PRICE': [min_rental_price]*len(valid_abbr),
-        'VALID': [valid]*len(valid_abbr)
+        'CREATED_AT': [datetime.now()]*len(valid_tech_names),
+        'PRICE': [min_rental_price]*len(valid_tech_names),
+        'VALID': [valid]*len(valid_tech_names)
         }
     df_to_table(pd.DataFrame(streaming_record), 'FILM_STREAMING_SERVICES', replace_append='append', verbose=verbose)
     if verbose:
