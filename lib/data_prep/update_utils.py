@@ -67,7 +67,7 @@ def update_oldest_records(film_ids=None, film_limit=100, dryrun=False, verbose=F
         oldest_streaming_records = get_film_ids_from_select_statement(oldest_streaming_select_statement)
     
     print('In total, we are going to update the oldest {} records for letterboxd stats'.format(film_limit))
-    update_letterboxd_stats_records(film_ids=oldest_lb_records, log_reason='UPDATE_OLDEST_RECORDS', film_limit=film_limit, dryrun=dryrun, verbose=verbose)
+    update_letterboxd_stats_records(film_ids=oldest_lb_records, log_reason='UPDATE_OLDEST_RECORDS', film_limit=195, dryrun=dryrun, verbose=verbose)
     print('In total, we are going to update the oldest {} records for tmdb metadata'.format(film_limit))
     update_tmdb_metadata_records(film_ids=oldest_tmdb_records, log_reason='UPDATE_OLDEST_RECORDS', film_limit=film_limit, dryrun=dryrun, verbose=verbose)
     print('In total, we are going to update the oldest {} records for streaming'.format(film_limit*10))
