@@ -354,6 +354,7 @@ def run_algo(model_type=default_model):
     unrated_features = rating_features_df[rating_features_df['FILM_RATING_SCALED'].isnull()].reset_index(drop=True)
     non_features = ['FILM_ID',
                     'FILM_TITLE',
+                    # 'FILM_RATING',
                     'FILM_RATING_SCALED',
                     'FILM_RUNTIME',
                     'FILM_WATCH_COUNT',
@@ -365,6 +366,7 @@ def run_algo(model_type=default_model):
                     # 'DIRECTOR_PERCENT_WATCHED',
                     'new jersey',
                     'philadelphia, pennsylvania',
+                    'I_VS_LB'
                     ]
 
     model_features = [x for x in unrated_features.columns if x not in non_features]
@@ -375,7 +377,7 @@ def run_algo(model_type=default_model):
         if col_mean <= .01:
             delete_cols.append(col)
     model_features = [x for x in model_features if x not in delete_cols]
-    target = 'I_VS_LB'
+    target = 'FILM_RATING_SCALED'
     model_features = [x for x in model_features if x != target]
     X_train = rated_features[model_features]
     y_train = rated_features[[target]]
@@ -385,9 +387,9 @@ def run_algo(model_type=default_model):
     scaler.fit(X_train)
     X_train = scaler.transform(X_train)
     print('Features Scaled!')
-    print('Training model...')
+    print('Training {} model...'.format(model_type))
     if model_type == 'xgboost':
-        model = XGBRegressor()
+        model = XGBRegressor(min_child_weight=5)
     elif model_type == 'decision_tree':
         model = DecisionTreeRegressor(min_samples_leaf=5)
     elif model_type == 'linear_regression':
@@ -400,7 +402,7 @@ def run_algo(model_type=default_model):
     pred_df = unrated_features.copy()
     pred_df['ALGO_SCORE'] = model.predict(X_pred)
     print('Predictions complete!')
-    pred_df = scale_col(pred_df, 'ALGO_SCORE')
+    # pred_df = scale_col(pred_df, 'ALGO_SCORE')
     final_df = pd.concat([pred_df, rated_features], axis=0).reset_index(drop=True)
     # import ipdb; ipdb.set_trace()
     df_to_table(final_df, 'FILM_ALGO_SCORE', replace_append='replace')
