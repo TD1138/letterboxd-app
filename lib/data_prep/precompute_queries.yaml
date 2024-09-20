@@ -51,12 +51,24 @@ watchlist_query:
     , STREAMING_CONCAT AS (
     
       SELECT
-        
+    
         FILM_ID
         ,GROUP_CONCAT(STREAMING_SERVICE_FULL, ', ') AS STREAMING_SERVICES
         ,MIN(CASE WHEN STREAMING_SERVICE_ABBR = 'rent' THEN PRICE END) AS MIN_RENTAL_PRICE
-      
+    
+      FROM (
+    
+      SELECT
+        FILM_ID
+        ,STREAMING_SERVICE_FULL
+        ,STREAMING_SERVICE_ABBR
+        ,PRICE
+        
       FROM FILM_STREAMING_SERVICES
+      
+      ORDER BY FILM_ID, STREAMING_SERVICE_FULL ASC
+      
+      )
       
       GROUP BY FILM_ID
     
