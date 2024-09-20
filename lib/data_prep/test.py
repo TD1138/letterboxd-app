@@ -1,3 +1,4 @@
+import os
 from tqdm import tqdm
 from export_utils import refresh_core_tables, cleanup_exports_folder
 from enrichment_utils import ingest_new_films, get_all_films, ingest_film, ingest_new_people
@@ -8,7 +9,7 @@ from update_utils import update_oldest_records, update_streaming_records, update
 from algo_utils import run_algo
 from selenium_utils import download_letterboxd_zip
 from justwatch_utils import update_streaming_info
-from letterboxd_utils import get_letterboxd_top_250
+from letterboxd_utils import get_letterboxd_top_250, download_poster
 from precompute_tables import precompute_tables
 from gcp_utils import download_db, upload_db
 import sys
@@ -16,7 +17,16 @@ import sys
 import warnings
 warnings.filterwarnings("ignore")
 
-run_algo('decision_tree')
-precompute_tables()
-cleanup_exports_folder()
-upload_db()
+# all_films = select_statement_to_df('SELECT FILM_ID FROM FILM_LETTERBOXD_STATS ORDER BY FILM_WATCH_COUNT DESC')['FILM_ID']
+# all_films = select_statement_to_df('SELECT FILM_ID FROM FILM_ALGO_SCORE ORDER BY ALGO_SCORE DESC')['FILM_ID']
+all_films = select_statement_to_df('SELECT FILM_ID FROM PERSONAL_RATING ORDER BY FILM_RATING_SCALED DESC')['FILM_ID']
+total_to_download = 666
+
+posters_dir = 'C:\\Users\\tom\\Desktop\\dev\\PersonalProjects\\letterboxd-app\\db\\posters\\'
+posters = [x.replace('.jpg', '') for x in os.listdir(posters_dir)]
+
+films_no_posters = [x for x in all_films if x not in posters][:total_to_download]
+print('There are {} films to get posters for'.format(len(films_no_posters)))
+
+for film_id in tqdm(films_no_posters):
+    download_poster(film_id)

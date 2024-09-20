@@ -1,11 +1,17 @@
 import numpy as np
 import pandas as pd
+import os
 import json
 import requests
 from datetime import datetime
 from bs4 import BeautifulSoup
 from sqlite_utils import get_from_table, insert_record_into_table, delete_records, replace_record, update_record, df_to_table, table_to_df
 from tmdbv3api import Person
+from PIL import Image
+import io
+from dotenv import load_dotenv
+
+load_dotenv()
 
 def get_metadata_from_letterboxd(film_id, log_reason='UPDATE', verbose=False):
     letterboxd_url = get_from_table('FILM_TITLE', film_id, 'LETTERBOXD_URL')
@@ -200,6 +206,42 @@ def get_ext_ids_plus_content_type(film_id, log_reason='UPDATE', verbose=False):
     }
     replace_record('CONTENT_TYPE', content_record, film_id, log_reason=log_reason)
     if verbose: print(content_record)
+
+def get_poster_url(film_id):
+    film_url_title = get_from_table('FILM_URL_TITLE', film_id, 'FILM_URL_TITLE')
+    r = requests.get('https://letterboxd.com/film/{}/'.format(film_url_title))
+    soup = BeautifulSoup(r.content, 'lxml')
+    image_tag = str([x for x in soup.findAll('script') if 'image":' in str(x)][0])
+    image_tag2 = image_tag[image_tag.find('image')+8:]
+    return image_tag2[:image_tag2.find('"')]
+
+def download_image_from_url(url, save_path):
+    try:
+        # Send a GET request to the URL
+        response = requests.get(url, stream=True)
+        response.raise_for_status()  # Raise an exception for bad status codes
+
+        # Open the image using PIL
+        image = Image.open(io.BytesIO(response.content))
+
+        # Create the directory if it doesn't exist
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
+        # Save the image
+        image.save(save_path)
+        print(f"Image successfully downloaded: {save_path}")
+        return True
+    except requests.exceptions.RequestException as e:
+        print(f"Error downloading image: {e}")
+    except IOError as e:
+        print(f"Error saving image: {e}")
+    return False
+
+def download_poster(film_id):
+    posters_dir = 'C:\\Users\\tom\\Desktop\\dev\\PersonalProjects\\letterboxd-app\\db\\posters\\'
+    poster_url = get_poster_url(film_id)
+    save_dir = os.path.join(posters_dir, film_id+'.jpg')
+    download_image_from_url(poster_url, save_dir)
 
 def update_all_letterboxd_info(film_id, log_reason='UPDATE', verbose=False):
     try:
