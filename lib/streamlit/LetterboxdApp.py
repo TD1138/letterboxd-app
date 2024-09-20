@@ -43,8 +43,7 @@ if 'dfs' not in st.session_state:
         st.session_state['dfs'][df_name] = df
     
     shap_df = st.session_state['dfs']['watchlist'][['FILM_ID', 'FILM_TITLE', 'ALGO_SCORE']].merge(select_statement_to_df('SELECT * FROM FILM_SHAP_VALUES'), how='left', on='FILM_ID')
-    shap_df['SCALER'] = shap_df['ALGO_SCORE'] / shap_df['PREDICTION']
-    shap_df2 = shap_df.drop(['FILM_ID', 'FILM_TITLE'], axis=1).mul(shap_df['SCALER'], axis=0).drop(['ALGO_SCORE', 'SCALER'], axis=1)
+    shap_df2 = shap_df.drop(['FILM_ID', 'FILM_TITLE', 'ALGO_SCORE'], axis=1)
     shap_df2.insert(0, 'FILM_ID', st.session_state['dfs']['watchlist']['FILM_ID'])
     shap_df2.insert(1, 'FILM_TITLE', st.session_state['dfs']['watchlist']['FILM_TITLE'])
     shap_df2 = shap_df2.sort_values('PREDICTION', ascending=False)
@@ -55,14 +54,13 @@ if 'dfs' not in st.session_state:
     me_vs_lb_df['ABSOLUTE_VARIANCE'] = abs(me_vs_lb_df['VARIANCE'])
     st.session_state['dfs']['me_vs_lb'] = me_vs_lb_df
 
-    algo_features_rated_df = select_statement_to_df('SELECT * FROM FILM_ALGO_SCORE WHERE ALGO_SCORE IS NULL')
-    non_features = ['FILM_TOP_250', 'FILM_WATCH_COUNT', 'FILM_RATING', 'LIKES_PER_WATCH', 'FANS_PER_WATCH', 'FILM_RUNTIME', 'DIRECTOR_MEAN_RATING', 'DIRECTOR_TOTAL_FILMS', 'DIRECTOR_PERCENT_WATCHED', 'ALGO_SCORE']
-    algo_features_rated_df = select_statement_to_df('SELECT * FROM FILM_ALGO_SCORE WHERE ALGO_SCORE IS NULL')
-    all_features = algo_features_rated_df.columns
+    algo_features_df = select_statement_to_df('SELECT * FROM FILM_ALGO_SCORE')
+    non_features = ['FILM_TOP_250', 'FILM_WATCH_COUNT', 'FILM_RATING', 'LIKES_PER_WATCH', 'FANS_PER_WATCH', 'FILM_RUNTIME', 'DIRECTOR_MEAN_RATING', 'DIRECTOR_TOTAL_FILMS', 'DIRECTOR_PERCENT_WATCHED', 'I_VS_LB']
+    all_features = algo_features_df.columns
     keep_features = [x for x in all_features if x not in non_features]
-    algo_features_rated_df['IN_LETTERBOXD_TOP_250'] = np.where(algo_features_rated_df['FILM_TOP_250']<251, 1, 0)
-    algo_features_rated_df = algo_features_rated_df[keep_features]
-    st.session_state['dfs']['ranked'] = algo_features_rated_df
+    algo_features_df['IN_LETTERBOXD_TOP_250'] = np.where(algo_features_df['FILM_TOP_250']<251, 1, 0)
+    algo_features_df = algo_features_df[keep_features]
+    st.session_state['dfs']['ranked'] = algo_features_df
 
 
 if 'charts' not in st.session_state:
@@ -227,6 +225,7 @@ with diary_tab:
 with ranked_tab:
     non_ranking_features = ['FILM_ID', 'FILM_TITLE', 'FILM_RATING_SCALED']
     selectable_features = [x for x in st.session_state['dfs']['ranked'].columns if x not in non_ranking_features]
+    selectable_features.pop(-1)
     selected_feature = st.selectbox("Select Feature to show ranking:", selectable_features)
     if selected_feature:
         unique_values = st.session_state['dfs']['ranked'][selected_feature].unique()
@@ -234,13 +233,20 @@ with ranked_tab:
             selected_feature_value = 1
         else:
             selected_feature_value = st.selectbox("Select Value for Feature to show ranking:", np.sort(unique_values))
-        ranked_df = st.session_state['dfs']['ranked'][st.session_state['dfs']['ranked'][selected_feature] == selected_feature_value].sort_values('FILM_RATING_SCALED', ascending=False).reset_index(drop=True)
-        ranked_df = ranked_df[non_ranking_features]
-        ranked_df['Ranking'] = ranked_df.index + 1
-        mean_ranking = ranked_df['FILM_RATING_SCALED'].mean()
+        selected_feature_df = st.session_state['dfs']['ranked'][st.session_state['dfs']['ranked'][selected_feature] == selected_feature_value]
+        rating_ranked_df = selected_feature_df[selected_feature_df['FILM_RATING_SCALED'].notnull()].sort_values('FILM_RATING_SCALED', ascending=False).reset_index(drop=True)[['FILM_TITLE', 'FILM_RATING_SCALED']]
+        rating_ranked_df.insert(0, 'Ranking', rating_ranked_df.index + 1)
+        algo_ranked_df = selected_feature_df[selected_feature_df['FILM_RATING_SCALED'].isnull()].sort_values('ALGO_SCORE', ascending=False).reset_index(drop=True)[['FILM_TITLE', 'ALGO_SCORE']]
+        algo_ranked_df.insert(0, 'Ranking', algo_ranked_df.index + 1)
+        # ranked_df = ranked_df[non_ranking_features]
+        mean_ranking = rating_ranked_df['FILM_RATING_SCALED'].mean()
         st.write(selected_feature+' Ranked!')
         st.write('Mean rating of {:.2f} vs the top level mean of {:.2f}'.format(mean_ranking, st.session_state['dfs']['ranked']['FILM_RATING_SCALED'].mean()))
-        st.dataframe(ranked_df)
+        left_pos, right_pos = st.columns(2)
+        with left_pos:
+            st.dataframe(rating_ranked_df, use_container_width=True, hide_index=True)
+        with right_pos:
+            st.dataframe(algo_ranked_df, use_container_width=True, hide_index=True)
 
 
 
@@ -249,8 +255,8 @@ with stats:
     st.plotly_chart(st.session_state['charts']['ratings_basic_hist'], theme='streamlit', use_container_width=True)
     st.plotly_chart(st.session_state['charts']['ratings_hist'], theme='streamlit', use_container_width=True)
     st.plotly_chart(st.session_state['charts']['genre_agg_scatter'], theme='streamlit', use_container_width=True)
-    st.dataframe(st.session_state['dfs']['me_vs_lb'])
-    st.plotly_chart(st.session_state['charts']['me_vs_lb_df_scatter'], theme='streamlit')#, , use_container_width=True)
+    st.dataframe(st.session_state['dfs']['me_vs_lb'], hide_index=True)
+    st.plotly_chart(st.session_state['charts']['me_vs_lb_df_scatter'], theme='streamlit')
 
 with year_tab:
     st.bar_chart(data=st.session_state['dfs']['year_completion'], x='FILM_YEAR', y='TOTAL_FILMS', use_container_width=True)
