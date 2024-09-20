@@ -11,10 +11,14 @@ def load_queries():
         queries = yaml.safe_load(file)
     return queries
 
+queries = load_queries()
+
+def precompute_table(table_name):
+    sql = queries[table_name]['sql']
+    df = select_statement_to_df(sql)
+    table_name = 'precomputed_'+table_name.replace('_query', '')
+    df_to_table(df, table_name, replace_append='replace', verbose=True)
+
 def precompute_tables():
-    queries = load_queries()
-    for q in tqdm(queries):
-        sql = queries[q]['sql']
-        df = select_statement_to_df(sql)
-        table_name = 'precomputed_'+q.replace('_query', '')
-        df_to_table(df, table_name, replace_append='replace', verbose=True)
+    for table_name in tqdm(queries.keys()):
+        precompute_table(table_name)
