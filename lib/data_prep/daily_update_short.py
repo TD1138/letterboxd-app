@@ -19,7 +19,7 @@ else:
     set_latest_export()
     refresh_core_tables()
 ingest_new_films()
-run_algo('decision_tree')
+run_algo()
 precompute_tables()
 cleanup_exports_folder()
 upload_db()
