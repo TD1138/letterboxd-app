@@ -9,6 +9,7 @@ from sqlite_utils import get_from_table, insert_record_into_table, delete_record
 from tmdbv3api import Person
 from PIL import Image
 import io
+import re
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -215,7 +216,7 @@ def get_poster_url(film_id):
     image_tag2 = image_tag[image_tag.find('image')+8:]
     return image_tag2[:image_tag2.find('"')]
 
-def download_image_from_url(url, save_path):
+def download_image_from_url(url, save_path, verbose=False):
     try:
         # Send a GET request to the URL
         response = requests.get(url, stream=True)
@@ -224,12 +225,9 @@ def download_image_from_url(url, save_path):
         # Open the image using PIL
         image = Image.open(io.BytesIO(response.content))
 
-        # Create the directory if it doesn't exist
-        os.makedirs(os.path.dirname(save_path), exist_ok=True)
-
         # Save the image
         image.save(save_path)
-        print(f"Image successfully downloaded: {save_path}")
+        if verbose: print(f"Image successfully downloaded: {save_path}")
         return True
     except requests.exceptions.RequestException as e:
         print(f"Error downloading image: {e}")
@@ -240,8 +238,22 @@ def download_image_from_url(url, save_path):
 def download_poster(film_id):
     posters_dir = 'C:\\Users\\tom\\Desktop\\dev\\PersonalProjects\\letterboxd-app\\db\\posters\\'
     poster_url = get_poster_url(film_id)
-    save_dir = os.path.join(posters_dir, film_id+'.jpg')
+    save_dir = os.path.join(posters_dir, desensitise_case(film_id)+'.jpg')
     download_image_from_url(poster_url, save_dir)
+
+def desensitise_case(film_id):
+    film_id_short = film_id[2:]
+    desensitise_film_id = 'f_' + re.sub('([A-Z]{1})', r'\1_', film_id_short).lower()
+    return desensitise_film_id
+
+def resensitise_case(film_id):
+    def replace(match):
+        return match.group(1).upper()
+    film_id_short = film_id[2:]
+    pattern = r'([a-z])_'
+    while re.search(pattern, film_id_short):
+        film_id_short = re.sub(pattern, replace, film_id_short, count=1)
+    return 'f_' + film_id_short
 
 def update_all_letterboxd_info(film_id, log_reason='UPDATE', verbose=False):
     try:
