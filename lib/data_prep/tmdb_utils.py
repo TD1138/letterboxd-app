@@ -227,6 +227,11 @@ def update_tmbd_metadata(film_id, log_reason='UPDATE', verbose=False):
     update_language(movie_metadata_dict, log_reason=log_reason, verbose=verbose)
     return movie_metadata_dict
 
+def get_portrait_url(person_id):
+    person = Person()
+    portrait_url = 'https://image.tmdb.org/t/p/w300/' + person.details(person_id).profile_path
+    return portrait_url
+
 def create_person_metadata_dict(person_id):
     person_metadata_dict = {'PERSON_ID': person_id}
     try:

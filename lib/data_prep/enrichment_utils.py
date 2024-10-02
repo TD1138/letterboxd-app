@@ -2,7 +2,7 @@ from random import sample
 from tqdm import tqdm
 from export_utils import exportfile_to_df, convert_uri_to_id
 from sqlite_utils import table_to_df, update_ingestion_table, get_person_ids_from_select_statement
-from letterboxd_utils import update_all_letterboxd_info, download_poster
+from letterboxd_utils import update_all_letterboxd_info
 from tmdb_utils import update_tmbd_metadata, get_person_metadata
 from justwatch_utils import update_streaming_info
 from dotenv import load_dotenv
@@ -44,10 +44,6 @@ def ingest_film(film_id, log_reason='INGESTION', verbose=False):
         update_all_letterboxd_info(film_id, log_reason=log_reason, verbose=verbose)
     except Exception as e:
         print('Update of Letterboxd info for {} failed ({})'.format(film_id, e))
-    try:
-        download_poster(film_id)
-    except Exception as e:
-        print('DOwnload of poster for {} failed ({})'.format(film_id, e))
     try:
         update_tmbd_metadata(film_id, log_reason=log_reason, verbose=verbose)
     except Exception as e:

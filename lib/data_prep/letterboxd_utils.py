@@ -216,31 +216,6 @@ def get_poster_url(film_id):
     image_tag2 = image_tag[image_tag.find('image')+8:]
     return image_tag2[:image_tag2.find('"')]
 
-def download_image_from_url(url, save_path, verbose=False):
-    try:
-        # Send a GET request to the URL
-        response = requests.get(url, stream=True)
-        response.raise_for_status()  # Raise an exception for bad status codes
-
-        # Open the image using PIL
-        image = Image.open(io.BytesIO(response.content))
-
-        # Save the image
-        image.save(save_path)
-        if verbose: print(f"Image successfully downloaded: {save_path}")
-        return True
-    except requests.exceptions.RequestException as e:
-        print(f"Error downloading image: {e}")
-    except IOError as e:
-        print(f"Error saving image: {e}")
-    return False
-
-def download_poster(film_id):
-    posters_dir = 'C:\\Users\\tom\\Desktop\\dev\\PersonalProjects\\letterboxd-app\\db\\posters\\'
-    poster_url = get_poster_url(film_id)
-    save_dir = os.path.join(posters_dir, desensitise_case(film_id)+'.jpg')
-    download_image_from_url(poster_url, save_dir)
-
 def desensitise_case(film_id):
     film_id_short = film_id[2:]
     desensitise_film_id = 'f_' + re.sub('([A-Z]{1})', r'\1_', film_id_short).lower()

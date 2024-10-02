@@ -7,6 +7,7 @@ from algo_utils import run_algo
 from letterboxd_utils import get_letterboxd_top_250
 from precompute_tables import precompute_tables
 from gcp_utils import download_db, upload_db, backup_db
+from image_utils import update_images
 import sys
 from datetime import date
 
@@ -31,6 +32,7 @@ update_most_popular_films()
 update_letterboxd_top_250()
 update_recent_films()
 update_upcoming_films()
+update_images()
 run_algo()
 precompute_tables()
 cleanup_exports_folder()
