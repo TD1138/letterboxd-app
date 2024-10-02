@@ -6,16 +6,20 @@ from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
-service_account_path = os.path.join(os.getenv('PROJECT_PATH'), 'creds/service_account.json')
-credentials = service_account.Credentials.from_service_account_file(service_account_path)
-client = storage.Client(credentials=credentials, project='letterboxd-app')
-bucket = client.get_bucket('lb-db')
+def get_gcs_bucket():
+    service_account_path = os.path.join(os.getenv('PROJECT_PATH'), 'creds/service_account.json')
+    credentials = service_account.Credentials.from_service_account_file(service_account_path)
+    client = storage.Client(credentials=credentials, project='letterboxd-app')
+    bucket = client.get_bucket('lb-db')
+    return bucket
 
 def upload_file(local_path, gcs_destination):
+    bucket = get_gcs_bucket()
     gcs_object = bucket.blob(gcs_destination)
     gcs_object.upload_from_filename(local_path)
 
 def download_file(gcs_path, local_destination):
+    bucket = get_gcs_bucket()
     gcs_object = bucket.blob(gcs_path)
     gcs_object.download_to_filename(local_destination)
 
