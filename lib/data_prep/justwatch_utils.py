@@ -32,7 +32,7 @@ def update_streaming_info(film_id, log_reason='UPDATE', verbose=False, TEMP_OVER
         offers = None
     delete_records('FILM_STREAMING_SERVICES', film_id)
     if offers:
-        provider_technical_names = list(set([x.technical_name for x in offers if x.monetization_type in ['FLATRATE', 'FREE', 'ADS']]))
+        provider_technical_names = list(set([x.technical_name for x in offers if (x.technical_name != 'itv' and x.monetization_type in ['FLATRATE', 'FREE', 'ADS']) or (x.technical_name == 'itv' and x.monetization_type == 'FREE')]))
         valid_tech_names = [x for x in provider_technical_names if x in my_streaming_services_abbr]
         min_rental_price = 0
         valid = 1
