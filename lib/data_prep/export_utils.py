@@ -137,6 +137,7 @@ def refresh_core_tables(verbose=False):
     film_ratings_df.columns = ['FILM_ID', 'FILM_RATING_BASIC', 'FILM_RATING_SCALED', 'FILM_RATING_PERCENT']
     df_to_table(film_ratings_df, 'PERSONAL_RATING', replace_append='replace', verbose=verbose)
 
-
-
-
+    top_ten_boxoffice = exportfile_to_df('lists/top-ten-box-office-by-year.csv', skiprows=3)
+    top_ten_boxoffice['YEAR_BOX_OFFICE_POSITION'] = top_ten_boxoffice['DESCRIPTION'].apply(lambda x: x.split('\n')[1].split('. ')[0])
+    top_ten_boxoffice['FILM_ID'] = top_ten_boxoffice['URL'].apply(convert_uri_to_id)
+    df_to_table(top_ten_boxoffice[['FILM_ID', 'YEAR_BOX_OFFICE_POSITION']], 'FILM_TOP_TEN_BOX_OFFICE_BY_YEAR', replace_append='replace', verbose=verbose)
