@@ -149,12 +149,24 @@ all_films_query:
     , STREAMING_CONCAT AS (
     
       SELECT
-        
+    
         FILM_ID
         ,GROUP_CONCAT(STREAMING_SERVICE_FULL, ', ') AS STREAMING_SERVICES
         ,MIN(CASE WHEN STREAMING_SERVICE_ABBR = 'rent' THEN PRICE END) AS MIN_RENTAL_PRICE
-      
+    
+      FROM (
+    
+      SELECT
+        FILM_ID
+        ,STREAMING_SERVICE_FULL
+        ,STREAMING_SERVICE_ABBR
+        ,PRICE
+        
       FROM FILM_STREAMING_SERVICES
+      
+      ORDER BY FILM_ID, STREAMING_SERVICE_FULL ASC
+      
+      )
       
       GROUP BY FILM_ID
     
@@ -174,7 +186,9 @@ all_films_query:
       ,m.FILM_RATING_SCALED - c.FILM_RATING AS MY_RATING_VS_LB
       ,ABS(m.FILM_RATING_SCALED - c.FILM_RATING) AS MY_RATING_VS_LB_ABS
       ,c.FILM_LIKES_COUNT
+      ,COALESCE(1.0*c.FILM_LIKES_COUNT/c.FILM_WATCH_COUNT, 0.0) AS LIKES_PER_WATCH
       ,c.FILM_FAN_COUNT
+      ,COALESCE(1.0*c.FILM_FAN_COUNT/c.FILM_WATCH_COUNT, 0.0) AS FANS_PER_WATCH
       ,CASE WHEN d.FILM_ID IS NULL THEN 'No' ELSE 'Yes' END AS STREAMING
       ,h.STREAMING_SERVICES
       ,CASE WHEN h.MIN_RENTAL_PRICE IS NULL THEN 'No' ELSE 'Yes' END AS RENTABLE
@@ -183,6 +197,8 @@ all_films_query:
       ,e.FILM_RUNTIME
       ,i.FILM_DECADE
       ,i.FILM_YEAR
+      ,q.FILM_RELEASE_DATE
+      ,CASE WHEN q.FILM_STATUS = 'Released' AND (DATE(CASE WHEN COALESCE(q.FILM_RELEASE_DATE, '') = '' THEN '2099-09-09' ELSE q.FILM_RELEASE_DATE END) < DATE('now')) THEN 1 ELSE 0 END AS RELEASED
       ,f.FILM_GENRE
       ,f.ALL_FILM_GENRES
       ,n.ALGO_SCORE
@@ -216,7 +232,9 @@ all_films_query:
     ON a.FILM_ID = n.FILM_ID
     LEFT JOIN FILM_LETTERBOXD_TOP_250 p
     ON a.FILM_ID = p.FILM_ID
-    
+    LEFT JOIN FILM_RELEASE_INFO q
+    ON a.FILM_ID = q.FILM_ID
+
     WHERE g.CONTENT_TYPE = 'movie'
 
 year_completion_query:
@@ -414,7 +432,9 @@ director_completion_query:
         ,e.PERSON_NAME AS DIRECTOR_NAME
         ,CASE WHEN c.FILM_ID IS NULL THEN 0 ELSE 1 END AS WATCHED
         ,CASE WHEN f.FILM_RATING_SCALED IS NOT NULL THEN 1 ELSE 0 END AS RATED
-        ,f.FILM_RATING_SCALED
+        ,f.FILM_RATING_SCALED AS MY_RATING
+        ,g.FILM_WATCH_COUNT
+        ,g.FILM_RATING AS LETTERBOXD_RATING
     
       FROM ALL_FEATURE_FILMS a
       
@@ -432,29 +452,107 @@ director_completion_query:
 
       LEFT JOIN PERSONAL_RATING f
       ON a.FILM_ID = f.FILM_ID
+      
+      LEFT JOIN FILM_LETTERBOXD_STATS g
+      ON a.FILM_ID = g.FILM_ID
     
       WHERE b.JOB = 'Director'
       AND e.PERSON_NAME IS NOT NULL
         
+      )    
+    , RATED AS (
+      
+        SELECT
+        
+          PERSON_ID
+          ,DIRECTOR_NAME
+          ,COUNT(*) AS TOTAL_FILMS
+          ,SUM(RATED) AS FILMS_RATED
+        
+        FROM BASE_TABLE
+      
+        GROUP BY PERSON_ID,DIRECTOR_NAME
+      
+      )
+    
+    , RANKED AS (
+      
+        SELECT
+      
+          a.PERSON_ID
+          ,a.DIRECTOR_NAME
+          ,a.TOTAL_FILMS
+          ,a.FILMS_RATED
+          ,b.FILM_TITLE
+          ,b.MY_RATING
+          ,ROW_NUMBER() OVER (PARTITION BY a.PERSON_ID ORDER BY b.MY_RATING DESC) AS FILM_RANK
+          
+        FROM RATED a
+        
+        LEFT JOIN BASE_TABLE b
+        ON a.PERSON_ID = b.PERSON_ID
+        
+        WHERE a.FILMS_RATED >= 5
+        OR (a.TOTAL_FILMS >=3 AND a.TOTAL_FILMS = a.FILMS_RATED)
+      
       )
       
-    SELECT
+    , TOP_FIVE AS (
+  
+      SELECT
+
+        PERSON_ID
+        ,AVG(MY_RATING) AS TOP_FIVE_RATING
+        
+      FROM RANKED
+
+      WHERE FILM_RANK <= 5
+
+      GROUP BY PERSON_ID
       
-      DIRECTOR_NAME
-      ,COUNT(*) AS TOTAL_FILMS
-      ,SUM(WATCHED) AS FILMS_WATCHED
-      ,AVG(WATCHED) AS PERCENT_WATCHED
-      ,SUM(RATED) AS FILMS_RATED
-      ,AVG(RATED) AS PERCENT_RATED
-      ,AVG(FILM_RATING_SCALED) AS MEAN_RATING_SCALED
-      
-    FROM BASE_TABLE
+    )
     
-    GROUP BY DIRECTOR_NAME
+    , DIRECTOR_AGG AS (
 
-    HAVING TOTAL_FILMS >= 3 AND FILMS_WATCHED >= 1
+      SELECT
+          
+          PERSON_ID
+          ,DIRECTOR_NAME
+          ,COUNT(*) AS TOTAL_FILMS
+          ,SUM(WATCHED) AS FILMS_WATCHED
+          ,AVG(WATCHED) AS PERCENT_WATCHED
+          ,SUM(RATED) AS FILMS_RATED
+          ,AVG(RATED) AS PERCENT_RATED
+          ,AVG(MY_RATING) AS MY_RATING_MEAN
+          ,AVG(LETTERBOXD_RATING) AS LETTERBOXD_RATING_MEAN
+          ,SUM(FILM_WATCH_COUNT) AS LETTERBOXD_WATCH_COUNT
+          
+        FROM BASE_TABLE
+        
+        GROUP BY PERSON_ID, DIRECTOR_NAME
 
-    ORDER BY PERCENT_WATCHED DESC, FILMS_WATCHED DESC
+        HAVING TOTAL_FILMS >= 3 AND FILMS_WATCHED >= 1
+        
+        )
+      
+    SELECT
+
+      a.PERSON_ID
+      ,a.DIRECTOR_NAME
+      ,a.TOTAL_FILMS
+      ,a.FILMS_WATCHED
+      ,a.PERCENT_WATCHED
+      ,a.FILMS_RATED
+      ,a.PERCENT_RATED
+      ,a.MY_RATING_MEAN
+      ,a.LETTERBOXD_RATING_MEAN
+      ,a.LETTERBOXD_WATCH_COUNT
+      ,ROUND(a.LETTERBOXD_WATCH_COUNT / a.TOTAL_FILMS) AS LETTERBOXD_WATCHES_PER_FILM
+      ,b.TOP_FIVE_RATING
+      
+    FROM DIRECTOR_AGG a
+    LEFT JOIN TOP_FIVE b
+    ON a.PERSON_ID = b.PERSON_ID
 
 director_film_level_query:
   sql: |
