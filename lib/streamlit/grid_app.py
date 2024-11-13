@@ -23,12 +23,15 @@ if 'dfs' not in st.session_state:
     st.session_state['dfs']['watchlist'] = watchlist_df
 
     algo_features_df = select_statement_to_df("""
-SELECT a.*, CASE WHEN b.FILM_ID IS NOT NULL THEN 1 ELSE 0 END AS WATCHED, c.LETTERBOXD_URL
+SELECT a.*, CASE WHEN b.FILM_ID IS NOT NULL THEN 1 ELSE 0 END AS WATCHED, c.LETTERBOXD_URL, d.FILM_POSITION
 FROM FILM_ALGO_SCORE a
 LEFT JOIN WATCHED b
 ON a.FILM_ID = b.FILM_ID
 LEFT JOIN FILM_TITLE c
-ON a.FILM_ID = c.FILM_ID""")
+ON a.FILM_ID = c.FILM_ID
+LEFT JOIN PERSONAL_RANKING d
+ON a.FILM_ID = d.FILM_ID
+                                              """)
     non_features = ['FILM_TOP_250', 'FILM_RUNTIME', 'DIRECTOR_MEAN_RATING', 'I_VS_LB']
     all_features = algo_features_df.columns
     keep_features = [x for x in all_features if x not in non_features]
@@ -111,14 +114,41 @@ WHERE b.KEYWORD_ID IS NOT NULL
     algo_features_df[keyword_valid_cols] = algo_features_df[keyword_valid_cols].apply(lambda x: x.fillna(0))
     st.session_state['dfs']['ranked'] = algo_features_df
     algo_features_df = None
+
     director_statement = 'SELECT * FROM precomputed_director_completion'
     director_df = select_statement_to_df(director_statement)
     st.session_state['dfs']['director'] = director_df
 
+    actor_statement = 'SELECT * FROM precomputed_actor_completion'
+    actor_df = select_statement_to_df(actor_statement)
+    st.session_state['dfs']['actor'] = actor_df
+
+    year_statement = 'SELECT * FROM precomputed_year_completion'
+    year_df = select_statement_to_df(year_statement)
+    st.session_state['dfs']['year'] = year_df
+
 else:
     watchlist_df = st.session_state['dfs']['watchlist']
     director_df = st.session_state['dfs']['director']
+    actor_df = st.session_state['dfs']['actor']
+    year_df = st.session_state['dfs']['year']
     
+if 'selected_director' not in st.session_state:
+    st.session_state.selected_director = None
+
+if 'selected_actor' not in st.session_state:
+        st.session_state.selected_actor = None
+
+if 'director_sort_order_persistent' not in st.session_state:
+    st.session_state['director_sort_order_persistent'] = 'Total Films'
+if 'actor_sort_order' not in st.session_state:
+    st.session_state['director_sort_order'] = st.session_state['director_sort_order_persistent']
+
+if 'actor_sort_order_persistent' not in st.session_state:
+    st.session_state['actor_sort_order_persistent'] = 'Total Films'
+if 'actor_sort_order' not in st.session_state:
+    st.session_state['actor_sort_order'] = st.session_state['actor_sort_order_persistent']
+
 # def open_url(url):
 #     open_script= """
 #         <script type="text/javascript">
@@ -199,7 +229,7 @@ def film_card(film, custom_col=None):
         button_text = button_text + f"{sort_obj['print_name']}: {film[sort_obj['col_name']]}"
     st.link_button(button_text, url=film['LETTERBOXD_URL'], use_container_width=True)
 
-def film_card_ranked(film, custom_col=None):
+def film_card_ranked(film, rated=False, custom_col=None):
     col1, col2, col3, col4 = st.columns([0.2, 0.2, 0.1, 0.7])
     with col1:
         st.markdown("""
@@ -213,26 +243,32 @@ def film_card_ranked(film, custom_col=None):
         st.markdown('<p class="big-font"> {} </p>'.format(int(film['Ranking'])), unsafe_allow_html=True)
     with col2:
         poster_path = get_poster_path(film['FILM_ID'])
-        st.image(poster_path, width=135)
+        st.image(poster_path, width=166)
     with col4:
         card_text1 = f"**{film['FILM_TITLE']} ({film['FILM_YEAR']})**"
         st.link_button(card_text1, url=film['LETTERBOXD_URL'])
+        if custom_col:
+            card_text_custom = f"{custom_col.replace('_', ' ').title()} = {film[custom_col]:}"
+            st.write(card_text_custom)
         card_text2 = f"Watch Count: {film['FILM_WATCH_COUNT']:,}"
         st.write(card_text2)
         card_text3 = f"Letterboxd Rating: {film['FILM_RATING']}"
         st.write(card_text3)
-        if film['FILM_RATING_SCALED'] > 0:
+        film_rating = film['FILM_RATING_SCALED'] if film['FILM_RATING_SCALED'] else -1
+        if film_rating > 0:
             card_text4 = f"My Rating: {film['FILM_RATING_SCALED']:.4}"
         else:
             card_text4 = f"Algo Score: {film['ALGO_SCORE']:.4}"
         st.write(card_text4)
-        if custom_col:
-            card_text5 = f"{custom_col.replace('_', ' ').title()} = {film[custom_col]:}"
-            st.write(card_text5)
+        if rated:
+            card_text_rated = f"My Ranking: {int(film['FILM_POSITION']):,}"
+        else:
+            card_text_rated = ""
+        st.write(card_text_rated)
 
-def display_film_grid_ranking(films_df, limit=50, custom_col=None):
+def display_film_grid_ranking(films_df, limit=50, rated=False, custom_col=None):
     for _, film in films_df.head(limit).iterrows():
-        film_card_ranked(film, custom_col=custom_col)
+        film_card_ranked(film, rated=rated, custom_col=custom_col)
 
 def person_card(person, name_column='DIRECTOR_NAME', custom_col=None):
     portrait_path = get_portrait_path(person['PERSON_ID'])
@@ -245,22 +281,31 @@ def person_card(person, name_column='DIRECTOR_NAME', custom_col=None):
     f"Total Letterboxd Watches: {person['LETTERBOXD_WATCH_COUNT']:,}\n\n" \
     f"Letterboxd Mean Rating: {person['LETTERBOXD_RATING_MEAN']:.2f}\n\n"
     if custom_col:
-        button_text = button_text + f"{sort_obj2['print_name']}: {person[sort_obj2['col_name']]}"
-    st.button(button_text, use_container_width=True)
+        button_text = button_text + f"{custom_col['print_name']}: {person[custom_col['col_name']]}"
+    if st.button(button_text, use_container_width=True):
+        if name_column=='DIRECTOR_NAME':
+            st.session_state.selected_director = person['PERSON_ID']
+        elif name_column=='ACTOR_NAME':
+            st.session_state.selected_actor = person['PERSON_ID']
+        st.rerun()
 
-def display_person_grid(people_df, people_per_page=50, people_per_row=10, custom_col=None):
+def display_person_grid(people_df, people_per_page=50, people_per_row=10, name_column='DIRECTOR_NAME', custom_col=None):
     for i in range(0, people_per_page, people_per_row):
         row_people = people_df.iloc[i:i+people_per_row]
         cols = st.columns(people_per_row)
         for j, (_, person) in enumerate(row_people.iterrows()):
             with cols[j]:
-                person_card(person, custom_col=custom_col)
+                person_card(person, name_column=name_column, custom_col=custom_col)
 
 # st.write(watchlist_df)
 
 # Streamlit app
 
-watchlist_tab, ranked_tab, director_tab = st.tabs(['Watchlist', 'Ranked', 'Director'])
+# st.write('st.session_state.selected_actor={}'.format(st.session_state.selected_actor))
+# st.write('st.session_state.selected_director={}'.format(st.session_state.selected_director))
+
+watchlist_tab, ranked_tab, director_tab, actor_tab, year_tab, filmid_lookup_tab = st.tabs(['Watchlist', 'Ranked', 'Director', 'Actor', 'Year', 'FILM_ID Lookup'])
+
 with watchlist_tab:
     # st.write(watchlist_df)
     pos0, pos1, pos2, pos3, pos4 = st.columns(5)
@@ -289,49 +334,50 @@ with watchlist_tab:
         specific_streaming_filter = st.selectbox('Specific Service:', services, index=None)
         if specific_streaming_filter:
             watchlist_df = watchlist_df[watchlist_df['STREAMING_SERVICES'].str.contains(specific_streaming_filter)]
-
-    pos0, pos1, pos2, pos3, pos4 = st.columns([0.6, 0.4, 1, 1, 1])
-    
-    with pos0:
-        released_filter = st.radio('Released:', ['Either', 'Yes', 'No'], horizontal=True)
-        if released_filter != 'Either':
-            watchlist_df = watchlist_df[watchlist_df['RELEASED'] == released_filter]
-    with pos1:
-        pos0_, pos1_ = st.columns(2)
-        with pos0_:
-            year_from = st.number_input('Year:', value=watchlist_df['FILM_YEAR'].min(), step=1)#, label_visibility='collapsed')
-        with pos1_:
-            year_to = st.number_input('', value=watchlist_df['FILM_YEAR'].max(), step=1)#, label_visibility='collapsed')
-        watchlist_df = watchlist_df[(watchlist_df['FILM_YEAR'] >= year_from) & (watchlist_df['FILM_YEAR'] <= year_to)]
-    with pos2:
-        genre_filter = st.multiselect("Select Genre:", sorted(watchlist_df['FILM_GENRE'].unique()))
-        if genre_filter:
-            for genre in genre_filter:
-                watchlist_df = watchlist_df[watchlist_df['ALL_FILM_GENRES'].str.contains(genre)]
-    with pos3:
-        quant_film_lengths = {'Any': 999, '<90m': 90, '<1h40': 100, '<2h': 120, '<3h': 180}
-        quant_length_filter = st.radio('Film Length:', quant_film_lengths.keys(), horizontal=True)
-        watchlist_df = watchlist_df[watchlist_df['FILM_RUNTIME'] <= quant_film_lengths[quant_length_filter]]
-    with pos4:
-        sort_options = {
-            'Algo Score': {'print_name': 'Algo Score', 'col_name': 'ALGO_SCORE', 'asc': False},
-            'My Rating': {'print_name': 'My Rating', 'col_name': 'FILM_RATING_SCALED', 'asc': False},
-            'Letterboxd Watch Count': {'print_name': 'Letterboxd Watch Count', 'col_name': 'FILM_WATCH_COUNT', 'asc': False},
-            'Letterboxd Rating': {'print_name': 'Letterboxd Rating', 'col_name': 'FILM_RATING', 'asc': False},
-            'Letterboxd Likes per Watch': {'print_name': 'Letterboxd Likes per Watch', 'col_name': 'LIKES_PER_WATCH', 'asc': False},
-            'Letterboxd Fans per Watch': {'print_name': 'Letterboxd Fans per Watch', 'col_name': 'FANS_PER_WATCH', 'asc': False},
-            'Letterboxd Top 250': {'print_name': 'Letterboxd Top 250', 'col_name': 'FILM_TOP_250', 'asc': True},
-            'My Rating vs Letterboxd': {'print_name': 'My Rating vs Letterboxd', 'col_name': 'MY_RATING_VS_LB', 'asc': False},
-            'Film Title': {'print_name': 'Film Title', 'col_name': 'FILM_TITLE', 'asc': True}
-                        }
-        sort_order = st.selectbox('Sort Order:', sort_options.keys())
-        sort_obj = sort_options[sort_order]
-        watchlist_df = watchlist_df.sort_values(sort_obj['col_name'], ascending=sort_obj['asc'])
-    default_displays_values = ['Algo Score', 'Letterboxd Watch Count', 'Letterboxd Rating']
-    if sort_order in default_displays_values:
-        display_film_grid(watchlist_df, FILMS_PER_PAGE, FILMS_PER_ROW)
-    else:
-        display_film_grid(watchlist_df, FILMS_PER_PAGE, FILMS_PER_ROW, custom_col=sort_obj)
+    if len(watchlist_df) > 0:
+        pos0, pos1, pos2, pos3, pos4 = st.columns([0.6, 0.4, 1, 1, 1])
+        
+        with pos0:
+            released_filter = st.radio('Released:', ['Either', 'Yes', 'No'], horizontal=True)
+            if released_filter != 'Either':
+                watchlist_df = watchlist_df[watchlist_df['RELEASED'] == int(released_filter.replace('Yes', '1').replace('No', '0'))]
+        with pos1:
+            pos0_, pos1_ = st.columns(2)
+            with pos0_:
+                year_from = st.number_input('Year:', value=watchlist_df['FILM_YEAR'].min(), step=1)
+            with pos1_:
+                year_to = st.number_input('', value=watchlist_df['FILM_YEAR'].max(), step=1)
+            watchlist_df = watchlist_df[(watchlist_df['FILM_YEAR'] >= year_from) & (watchlist_df['FILM_YEAR'] <= year_to)]
+        with pos2:
+            genre_filter = st.multiselect("Select Genre:", sorted(watchlist_df['FILM_GENRE'].unique()))
+            if genre_filter:
+                for genre in genre_filter:
+                    watchlist_df = watchlist_df[watchlist_df['ALL_FILM_GENRES'].str.contains(genre)]
+        with pos3:
+            quant_film_lengths = {'Any': 999, '<90m': 90, '<1h40': 100, '<2h': 120, '<3h': 180}
+            quant_length_filter = st.radio('Film Length:', quant_film_lengths.keys(), horizontal=True)
+            watchlist_df = watchlist_df[watchlist_df['FILM_RUNTIME'] <= quant_film_lengths[quant_length_filter]]
+        with pos4:
+            sort_options = {
+                'Algo Score': {'print_name': 'Algo Score', 'col_name': 'ALGO_SCORE', 'asc': False},
+                'My Rating': {'print_name': 'My Rating', 'col_name': 'FILM_RATING_SCALED', 'asc': False},
+                'Letterboxd Watch Count': {'print_name': 'Letterboxd Watch Count', 'col_name': 'FILM_WATCH_COUNT', 'asc': False},
+                'Letterboxd Rating': {'print_name': 'Letterboxd Rating', 'col_name': 'FILM_RATING', 'asc': False},
+                'Letterboxd Likes per Watch': {'print_name': 'Letterboxd Likes per Watch', 'col_name': 'LIKES_PER_WATCH', 'asc': False},
+                'Letterboxd Fans per Watch': {'print_name': 'Letterboxd Fans per Watch', 'col_name': 'FANS_PER_WATCH', 'asc': False},
+                'Letterboxd Top 250': {'print_name': 'Letterboxd Top 250', 'col_name': 'FILM_TOP_250', 'asc': True},
+                'My Rating vs Letterboxd': {'print_name': 'My Rating vs Letterboxd', 'col_name': 'MY_RATING_VS_LB', 'asc': False},
+                'Release Date': {'print_name':'Release Date', 'col_name':'FILM_RELEASE_DATE', 'asc': False},
+                'Film Title': {'print_name': 'Film Title', 'col_name': 'FILM_TITLE', 'asc': True}
+                            }
+            sort_order = st.selectbox('Sort Order:', sort_options.keys())
+            sort_obj = sort_options[sort_order]
+            watchlist_df = watchlist_df.sort_values(sort_obj['col_name'], ascending=sort_obj['asc'])
+        default_displays_values = ['Algo Score', 'Letterboxd Watch Count', 'Letterboxd Rating']
+        if sort_order in default_displays_values:
+            display_film_grid(watchlist_df, FILMS_PER_PAGE, FILMS_PER_ROW)
+        else:
+            display_film_grid(watchlist_df, FILMS_PER_PAGE, FILMS_PER_ROW, custom_col=sort_obj)
 
 with ranked_tab:
     non_ranking_features = ['FILM_ID', 'FILM_TITLE']
@@ -360,40 +406,155 @@ with ranked_tab:
         algo_ranked_df.insert(0, 'Ranking', algo_ranked_df.index + 1)
         mean_ranking = rating_ranked_df['FILM_RATING_SCALED'].mean()
         total_films = len(selected_feature_df)
-        watched_films = selected_feature_df['WATCHED'].sum()
-        rated_films = len(rating_ranked_df)
-        st.write(selected_feature+' Ranked!')
-        st.write('Watched {}/{} ({:.2%})'.format(watched_films, total_films, watched_films / total_films))
-        st.write('Rated {}/{} ({:.2%})'.format(rated_films, total_films, rated_films / total_films))
-        st.write('Mean rating of {:.2f} vs the top level mean of {:.2f}'.format(mean_ranking, st.session_state['dfs']['ranked']['FILM_RATING_SCALED'].mean()))
-        left_pos, right_pos = st.columns(2)
-        with left_pos:
-            display_film_grid_ranking(rating_ranked_df, custom_col=display_feature)
-        with right_pos:
-            display_film_grid_ranking(algo_ranked_df, custom_col=display_feature)
+        if total_films > 0:
+            watched_films = selected_feature_df['WATCHED'].sum()
+            rated_films = len(rating_ranked_df)
+            st.write(selected_feature+' Ranked!')
+            st.write('Watched {}/{} ({:.2%})'.format(watched_films, total_films, watched_films / total_films))
+            st.write('Rated {}/{} ({:.2%})'.format(rated_films, total_films, rated_films / total_films))
+            st.write('Mean rating of {:.2f} vs the top level mean of {:.2f}'.format(mean_ranking, st.session_state['dfs']['ranked']['FILM_RATING_SCALED'].mean()))
+            left_pos, right_pos = st.columns(2)
+            with left_pos:
+                display_film_grid_ranking(rating_ranked_df, rated=True, custom_col=display_feature)
+            with right_pos:
+                display_film_grid_ranking(algo_ranked_df, custom_col=display_feature)
+        else:
+            st.write('No Films to show - adjust filters above')
 
 with director_tab:
-    st.write(director_df)
+
+    if st.session_state.selected_director is not None:
+        selected_director_df = select_statement_to_df('SELECT * FROM precomputed_director_film_level WHERE PERSON_ID = {}'.format(st.session_state.selected_director))
+        selected_director_name = selected_director_df.loc[0, 'DIRECTOR_NAME']
+        rating_director_df = selected_director_df[selected_director_df['FILM_RATING_SCALED'].notnull()].sort_values('FILM_RATING_SCALED', ascending=False).reset_index(drop=True)#[['FILM_ID', 'FILM_TITLE', 'FILM_YEAR', 'FILM_RATING', 'FILM_WATCH_COUNT', 'FILM_RATING_SCALED']]
+        rating_director_df.insert(0, 'Ranking', rating_director_df.index + 1)
+        algo_director_df = selected_director_df[selected_director_df['FILM_RATING_SCALED'].isnull()].sort_values('ALGO_SCORE', ascending=False).reset_index(drop=True)#[['FILM_ID', 'FILM_TITLE', 'FILM_YEAR','FILM_RATING', 'FILM_WATCH_COUNT',  'ALGO_SCORE']]
+        algo_director_df.insert(0, 'Ranking', algo_director_df.index + 1)
+        mean_ranking = rating_director_df['FILM_RATING_SCALED'].mean()
+        total_films = len(selected_director_df)
+        watched_films = selected_director_df['WATCHED'].sum()
+        rated_films = len(rating_director_df)
+        if st.button('Return to Director Grid'):
+            st.session_state.selected_director = None
+            st.rerun()
+        st.write(selected_director_name+' Ranked!')
+        st.write('Watched {}/{} ({:.2%})'.format(watched_films, total_films, watched_films / total_films))
+        st.write('Rated {}/{} ({:.2%})'.format(rated_films, total_films, rated_films / total_films))
+        if mean_ranking > 0:
+            st.write('Mean rating of {:.2f} vs the top level mean of {:.2f}'.format(mean_ranking, st.session_state['dfs']['ranked']['FILM_RATING_SCALED'].mean()))
+        left_pos, right_pos = st.columns(2)
+        with left_pos:
+            display_film_grid_ranking(rating_director_df, rated=True)
+        with right_pos:
+            display_film_grid_ranking(algo_director_df)
+    else:
+        pos0, pos1, pos2, pos3, pos4 = st.columns([0.6, 0.4, 1, 1, 1])
+        with pos0:
+            director_name = st.text_input('Enter Director:')
+            if director_name:
+                tmp_df = select_statement_to_df('SELECT PERSON_ID, PERSON_NAME FROM PERSON_INFO WHERE REPLACE(PERSON_NAME, ".", "") LIKE "%{}%"'.format(director_name))
+                director_df = director_df.merge(tmp_df, how='inner', on='PERSON_ID')
+        with pos4:
+            sort_options2 = {
+                'Total Films': {'print_name': 'Total Films', 'col_name': 'TOTAL_FILMS', 'asc': False},
+                'Films Watched': {'print_name': 'Films Watched', 'col_name': 'FILMS_WATCHED', 'asc': False},
+                '% Watched': {'print_name': '% Watched', 'col_name': 'PERCENT_WATCHED', 'asc': False},
+                'Films Rated': {'print_name': 'Films Rated', 'col_name': 'FILMS_RATED', 'asc': False},
+                '% Rated': {'print_name': '% Rated', 'col_name': 'PERCENT_RATED', 'asc': False},
+                'My Mean Rating': {'print_name': 'My Mean Rating', 'col_name': 'MY_RATING_MEAN', 'asc': False},
+                'My Mean Rating Top 5': {'print_name': 'My Mean Rating Top 5', 'col_name': 'TOP_FIVE_RATING', 'asc': False},
+                'Letterboxd Mean Rating': {'print_name': 'Letterboxd Mean Rating', 'col_name': 'LETTERBOXD_RATING_MEAN', 'asc': False},
+                'Total Letterboxd Watches': {'print_name': 'Total Letterboxd Watches', 'col_name': 'LETTERBOXD_WATCH_COUNT', 'asc': False},
+                'Letterboxd Watches per Film': {'print_name': 'Letterboxd Watches per Film', 'col_name': 'LETTERBOXD_WATCHES_PER_FILM', 'asc': False}
+                            }
+            st.session_state['director_sort_order'] = st.selectbox('Director Sort Order:', sort_options2.keys(), index=list(sort_options2).index(st.session_state['director_sort_order']))
+            st.session_state['director_sort_order_persistent'] = st.session_state['director_sort_order']
+            sort_obj2 = sort_options2[st.session_state['director_sort_order']]
+            director_df = director_df.sort_values(sort_obj2['col_name'], ascending=sort_obj2['asc'])
+        default_displays_values2 = ['Total Films', 'Percent Watched', 'My Mean Rating', 'Letterboxd Mean Rating', 'Total Letterboxd Watches']
+        if st.session_state['director_sort_order'] in default_displays_values2:
+            display_person_grid(director_df, FILMS_PER_PAGE, FILMS_PER_ROW)
+        else:
+            display_person_grid(director_df, FILMS_PER_PAGE, FILMS_PER_ROW, custom_col=sort_obj2)
+
+with actor_tab:
+    
+    if st.session_state.selected_actor is not None:
+        selected_actor_df = select_statement_to_df('SELECT * FROM precomputed_actor_film_level WHERE PERSON_ID = {}'.format(st.session_state.selected_actor))
+        selected_actor_name = selected_actor_df.loc[0, 'ACTOR_NAME']
+        rating_actor_df = selected_actor_df[selected_actor_df['FILM_RATING_SCALED'].notnull()].sort_values('FILM_RATING_SCALED', ascending=False).reset_index(drop=True)#[['FILM_ID', 'FILM_TITLE', 'FILM_YEAR', 'FILM_RATING', 'FILM_WATCH_COUNT', 'FILM_RATING_SCALED']]
+        rating_actor_df.insert(0, 'Ranking', rating_actor_df.index + 1)
+        algo_actor_df = selected_actor_df[selected_actor_df['FILM_RATING_SCALED'].isnull()].sort_values('ALGO_SCORE', ascending=False).reset_index(drop=True)#[['FILM_ID', 'FILM_TITLE', 'FILM_YEAR','FILM_RATING', 'FILM_WATCH_COUNT',  'ALGO_SCORE']]
+        algo_actor_df.insert(0, 'Ranking', algo_actor_df.index + 1)
+        mean_ranking = rating_actor_df['FILM_RATING_SCALED'].mean()
+        total_films = len(selected_actor_df)
+        watched_films = selected_actor_df['WATCHED'].sum()
+        rated_films = len(rating_actor_df)
+        if st.button('Return to Actor Grid'):
+            st.session_state.selected_actor = None
+            st.rerun()
+        st.write(selected_actor_name+' Ranked!')
+        st.write('Watched {}/{} ({:.2%})'.format(watched_films, total_films, watched_films / total_films))
+        st.write('Rated {}/{} ({:.2%})'.format(rated_films, total_films, rated_films / total_films))
+        if mean_ranking > 0:
+            st.write('Mean rating of {:.2f} vs the top level mean of {:.2f}'.format(mean_ranking, st.session_state['dfs']['ranked']['FILM_RATING_SCALED'].mean()))
+        left_pos, right_pos = st.columns(2)
+        with left_pos:
+            display_film_grid_ranking(rating_actor_df, rated=True)
+        with right_pos:
+            display_film_grid_ranking(algo_actor_df)
+    else:
+        pos0, pos1, pos2, pos3, pos4 = st.columns([0.6, 0.4, 1, 1, 1])
+        with pos0:
+            actor_name = st.text_input('Enter Actor:')
+            if actor_name:
+                tmp_df = select_statement_to_df('SELECT PERSON_ID, PERSON_NAME FROM PERSON_INFO WHERE REPLACE(PERSON_NAME, ".", "") LIKE "%{}%"'.format(actor_name))
+                actor_df = actor_df.merge(tmp_df, how='inner', on='PERSON_ID')
+        with pos4:
+            sort_options3 = {
+                'Total Films': {'print_name': 'Total Films', 'col_name': 'TOTAL_FILMS', 'asc': False},
+                'Films Watched': {'print_name': 'Films Watched', 'col_name': 'FILMS_WATCHED', 'asc': False},
+                '% Watched': {'print_name': '% Watched', 'col_name': 'PERCENT_WATCHED', 'asc': False},
+                'Films Rated': {'print_name': 'Films Rated', 'col_name': 'FILMS_RATED', 'asc': False},
+                '% Rated': {'print_name': '% Rated', 'col_name': 'PERCENT_RATED', 'asc': False},
+                'My Mean Rating': {'print_name': 'My Mean Rating', 'col_name': 'MY_RATING_MEAN', 'asc': False},
+                'Letterboxd Mean Rating': {'print_name': 'Letterboxd Mean Rating', 'col_name': 'LETTERBOXD_RATING_MEAN', 'asc': False},
+                'Total Letterboxd Watches': {'print_name': 'Total Letterboxd Watches', 'col_name': 'LETTERBOXD_WATCH_COUNT', 'asc': False},
+                'Letterboxd Watches per Film': {'print_name': 'Letterboxd Watches per Film', 'col_name': 'LETTERBOXD_WATCHES_PER_FILM', 'asc': False}
+                            }
+            st.session_state['actor_sort_order'] = st.selectbox('Actor Sort Order:', sort_options3.keys(), index=list(sort_options3).index(st.session_state['actor_sort_order']))
+            st.session_state['actor_sort_order_persistent'] = st.session_state['actor_sort_order']
+            sort_obj3 = sort_options3[st.session_state['actor_sort_order']]
+            actor_df = actor_df.sort_values(sort_obj3['col_name'], ascending=sort_obj3['asc'])
+        default_displays_values3 = ['Total Films', 'Percent Watched', 'My Mean Rating', 'Letterboxd Mean Rating', 'Total Letterboxd Watches']
+        if st.session_state['actor_sort_order'] in default_displays_values3:
+            display_person_grid(actor_df, FILMS_PER_PAGE, FILMS_PER_ROW, name_column='ACTOR_NAME')
+        else:
+            display_person_grid(actor_df, FILMS_PER_PAGE, FILMS_PER_ROW, name_column='ACTOR_NAME', custom_col=sort_obj3)
+
+with year_tab:
     pos0, pos1, pos2, pos3, pos4 = st.columns([0.6, 0.4, 1, 1, 1])
     with pos4:
-        sort_options2 = {
+        sort_options4 = {
             'Total Films': {'print_name': 'Total Films', 'col_name': 'TOTAL_FILMS', 'asc': False},
             'Films Watched': {'print_name': 'Films Watched', 'col_name': 'FILMS_WATCHED', 'asc': False},
             '% Watched': {'print_name': '% Watched', 'col_name': 'PERCENT_WATCHED', 'asc': False},
             'Films Rated': {'print_name': 'Films Rated', 'col_name': 'FILMS_RATED', 'asc': False},
             '% Rated': {'print_name': '% Rated', 'col_name': 'PERCENT_RATED', 'asc': False},
             'My Mean Rating': {'print_name': 'My Mean Rating', 'col_name': 'MY_RATING_MEAN', 'asc': False},
-            'My Mean Rating Top 5': {'print_name': 'My Mean Rating Top 5', 'col_name': 'TOP_FIVE_RATING', 'asc': False},
             'Letterboxd Mean Rating': {'print_name': 'Letterboxd Mean Rating', 'col_name': 'LETTERBOXD_RATING_MEAN', 'asc': False},
             'Total Letterboxd Watches': {'print_name': 'Total Letterboxd Watches', 'col_name': 'LETTERBOXD_WATCH_COUNT', 'asc': False},
-            'Letterboxd Watches per Film': {'print_name': 'Letterboxd Watches per Film', 'col_name': 'LETTERBOXD_WATCHES_PER_FILM', 'asc': False}
+            'Letterboxd Watches per Film': {'print_name': 'Letterboxd Watches per Film', 'col_name': 'LETTERBOXD_WATCHES_PER_FILM', 'asc': False},
+            'Letterboxd Watches Watched': {'print_name': 'Letterboxd Watches Watched', 'col_name': 'LETTERBOXD_WATCH_COUNT_WATCHED', 'asc': False},
+            'Letterboxd Watches Watched %': {'print_name': 'Letterboxd Watches Watched %', 'col_name': 'LETTERBOXD_WATCH_COUNT_WATCHED_PERCENT', 'asc': False}
                         }
-        sort_order2 = st.selectbox('Director Sort Order:', sort_options2.keys())
-        sort_obj2 = sort_options2[sort_order2]
-        director_df = director_df.sort_values(sort_obj2['col_name'], ascending=sort_obj2['asc'])
-    default_displays_values2 = ['Total Films', 'Percent Watched', 'My Mean Rating', 'Letterboxd Mean Rating', 'Total Letterboxd Watches']
-    if sort_order2 in default_displays_values2:
-        display_person_grid(director_df, FILMS_PER_PAGE, FILMS_PER_ROW)
-    else:
-        display_person_grid(director_df, FILMS_PER_PAGE, FILMS_PER_ROW, custom_col=sort_obj2)
-
+        sort_order4 = st.selectbox('Year Display:', sort_options4.keys())
+        sort_obj4 = sort_options4[sort_order4]
+    st.write(year_df)
+    st.bar_chart(data=year_df, x='FILM_YEAR', y=sort_obj4['col_name'], use_container_width=True)
+        
+with filmid_lookup_tab:
+    film_search = st.text_input('Enter Film Name or ID:')
+    film_id_df = select_statement_to_df('SELECT * FROM FILM_TITLE WHERE (FILM_ID LIKE "%{}%") OR (FILM_TITLE LIKE "%{}%")'.format(film_search, film_search))
+    if len(film_id_df) < 50:
+        st.dataframe(film_id_df, hide_index=True)
