@@ -2,8 +2,7 @@ import os
 import pandas as pd
 from datetime import datetime
 from tmdbv3api import TMDb, Movie, TV, Person
-from sqlite_utils import get_from_table, delete_records, insert_record_into_table, df_to_table, replace_record, update_record
-from letterboxd_utils import get_cast_from_letterboxd
+from sqlite_utils import get_from_table, delete_records, df_to_table, replace_record, update_record
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
@@ -228,8 +227,12 @@ def update_tmbd_metadata(film_id, log_reason='UPDATE', verbose=False):
     return movie_metadata_dict
 
 def get_portrait_url(person_id):
-    person = Person()
-    portrait_url = 'https://image.tmdb.org/t/p/w300/' + person.details(person_id).profile_path
+    try:
+        person = Person()
+        portrait_url = 'https://image.tmdb.org/t/p/w300/' + person.details(person_id).profile_path
+    except:
+        print('Error getting portrait url for person id {}'.format(person_id))
+        portrait_url = None
     return portrait_url
 
 def create_person_metadata_dict(person_id):
