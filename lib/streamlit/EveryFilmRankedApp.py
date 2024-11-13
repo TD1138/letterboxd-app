@@ -369,15 +369,12 @@ if st.session_state['display_dash']:
             rcol_val = selected_record[rcol].values[0]
             if rcol_val:
                 rcol_df = valid_df[valid_df[rcol]==rcol_val].sort_values('FILM_POSITION').reset_index(drop=True)
-                if 0<len(rcol_df)<50:
-                    "---"
-                    st.write('**{}={}**'.format(rcol, rcol_val))
-                    display_film_grid(rcol_df)
-        if len(valid_df) < 50:
-            st.write('**All films:**')
-            display_film_grid(valid_df)
+                container = st.expander('**{}={}**'.format(rcol, rcol_val), expanded=True)
+                with container:
+                    display_film_grid(rcol_df.tail(50))
+        st.write('**All films:**')
+        display_film_grid(valid_df.tail(50))
     with col2:
-        "---"
         selected_record['FILM_POSITION'] = int((st.session_state['lowest_allowed_position'] + st.session_state['highest_allowed_position'])/2)
         selected_record['FILM_RATING_SCALED'] = valid_df['FILM_RATING_SCALED'].mean()
         display_film_grid(selected_record)
