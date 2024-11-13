@@ -209,12 +209,17 @@ def get_ext_ids_plus_content_type(film_id, log_reason='UPDATE', verbose=False):
     if verbose: print(content_record)
 
 def get_poster_url(film_id):
-    film_url_title = get_from_table('FILM_URL_TITLE', film_id, 'FILM_URL_TITLE')
-    r = requests.get('https://letterboxd.com/film/{}/'.format(film_url_title))
-    soup = BeautifulSoup(r.content, 'lxml')
-    image_tag = str([x for x in soup.findAll('script') if 'image":' in str(x)][0])
-    image_tag2 = image_tag[image_tag.find('image')+8:]
-    return image_tag2[:image_tag2.find('"')]
+    try:
+        film_url_title = get_from_table('FILM_URL_TITLE', film_id, 'FILM_URL_TITLE')
+        r = requests.get('https://letterboxd.com/film/{}/'.format(film_url_title))
+        soup = BeautifulSoup(r.content, 'lxml')
+        image_tag = str([x for x in soup.findAll('script') if 'image":' in str(x)][0])
+        image_tag2 = image_tag[image_tag.find('image')+8:]
+        poster_url = image_tag2[:image_tag2.find('"')]
+    except:
+        print('Error getting poster url for {}'.format(film_id))
+        poster_url = None
+    return poster_url
 
 def desensitise_case(film_id):
     film_id_short = film_id[2:]
