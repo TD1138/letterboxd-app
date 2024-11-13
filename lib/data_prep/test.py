@@ -1,8 +1,9 @@
 import os
+from datetime import datetime
 from tqdm import tqdm
 from export_utils import refresh_core_tables, cleanup_exports_folder, exportfile_to_df, convert_uri_to_id
 from enrichment_utils import ingest_new_films, get_all_films, ingest_film, ingest_new_people
-from sqlite_utils import get_from_table, get_film_ids_from_select_statement, select_statement_to_df
+from sqlite_utils import get_from_table, get_film_ids_from_select_statement, select_statement_to_df, replace_record
 from tmdb_utils import update_tmdb_stats, update_tmbd_metadata, update_person_metadata
 from error_utils import correct_tmdb_metadata_errors, correct_all_errors, correct_letterboxd_stats_errors
 from update_utils import update_oldest_records, update_streaming_records, update_tmdb_metadata_records, update_recent_films, update_upcoming_films, update_letterboxd_stats, update_letterboxd_top_250
@@ -10,9 +11,9 @@ from algo_utils import run_algo
 from selenium_utils import download_letterboxd_zip
 from justwatch_utils import update_streaming_info
 from letterboxd_utils import get_letterboxd_top_250, desensitise_case, resensitise_case
-from precompute_tables import precompute_tables
+from precompute_tables import precompute_tables, precompute_table
 from gcp_utils import download_db, upload_db
-from image_utils import update_images
+from image_utils import update_images, update_portraits
 import sys
 
 import warnings
@@ -39,6 +40,17 @@ warnings.filterwarnings("ignore")
                          
 # download_db()
 # ingest_film('f_02aPc', verbose=True)
-# precompute_tables()
-# upload_db()
-update_images()
+# precompute_table('actor_film_level_query')
+# update_portraits(500)
+
+imdb_record = {
+        'FILM_ID': 'f_02noo',
+        'IMDB_ID': 'tt0053103',
+        'CREATED_AT':datetime.now()
+    }
+
+replace_record('IMDB_ID', imdb_record, film_id='f_02noo', log_reason='MANUAL_CORRECTION')
+
+
+upload_db()
+# update_images()
