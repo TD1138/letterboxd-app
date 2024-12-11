@@ -2,6 +2,7 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 from PIL import Image
+import plotly.express as px
 import os
 import sys
 sys.path.insert(0, '../data_prep')
@@ -113,7 +114,16 @@ WHERE b.KEYWORD_ID IS NOT NULL
     algo_features_df = algo_features_df.merge(keyword_df_wide[keyword_valid_cols], how='left', on='FILM_ID', )
     algo_features_df[keyword_valid_cols] = algo_features_df[keyword_valid_cols].apply(lambda x: x.fillna(0))
     st.session_state['dfs']['ranked'] = algo_features_df
-    algo_features_df = None
+
+    raw_shap_df = select_statement_to_df('SELECT * FROM FILM_SHAP_VALUES')
+    st.session_state['dfs']['model_features'] = [x for x in raw_shap_df.columns if x not in ['FILM_ID', 'BASE_VALUE', 'PREDICTION']]
+    raw_shap_df.columns = [x if x == 'FILM_ID' else x+'_SHAP' for x in raw_shap_df.columns]
+    shap_df = algo_features_df[['FILM_ID', 'FILM_TITLE'] + st.session_state['dfs']['model_features']].merge(raw_shap_df, how='left', on='FILM_ID')
+    # shap_df2 = shap_df.drop(['FILM_ID', 'FILM_TITLE', 'ALGO_SCORE'], axis=1)
+    # shap_df2.insert(0, 'FILM_ID', st.session_state['dfs']['watchlist']['FILM_ID'])
+    # shap_df2.insert(1, 'FILM_TITLE', st.session_state['dfs']['watchlist']['FILM_TITLE'])
+    # shap_df2 = shap_df2.sort_values('PREDICTION', ascending=False)
+    st.session_state['dfs']['shap'] = shap_df
 
     director_statement = 'SELECT * FROM precomputed_director_completion'
     director_df = select_statement_to_df(director_statement)
@@ -304,7 +314,7 @@ def display_person_grid(people_df, people_per_page=50, people_per_row=10, name_c
 # st.write('st.session_state.selected_actor={}'.format(st.session_state.selected_actor))
 # st.write('st.session_state.selected_director={}'.format(st.session_state.selected_director))
 
-watchlist_tab, ranked_tab, director_tab, actor_tab, year_tab, filmid_lookup_tab = st.tabs(['Watchlist', 'Ranked', 'Director', 'Actor', 'Year', 'FILM_ID Lookup'])
+watchlist_tab, ranked_tab, director_tab, actor_tab, year_tab, algo_tab, filmid_lookup_tab = st.tabs(['Watchlist', 'Ranked', 'Director', 'Actor', 'Year', 'Algo', 'FILM_ID Lookup'])
 
 with watchlist_tab:
     # st.write(watchlist_df)
@@ -550,8 +560,66 @@ with year_tab:
                         }
         sort_order4 = st.selectbox('Year Display:', sort_options4.keys())
         sort_obj4 = sort_options4[sort_order4]
-    st.write(year_df)
+    st.dataframe(year_df, hide_index=True)
     st.bar_chart(data=year_df, x='FILM_YEAR', y=sort_obj4['col_name'], use_container_width=True)
+    year_selection = st.selectbox('Select a Year:', np.sort(year_df['FILM_YEAR'].unique()), index=111)
+
+with algo_tab:
+    algo_feature = st.selectbox('Select a Feature:', st.session_state['dfs']['model_features'])
+    feature_values = st.session_state['dfs']['shap'][algo_feature]
+    shap_values = st.session_state['dfs']['shap'][algo_feature+'_SHAP']
+    # st.dataframe(shap_values)
+    feature_shap_scatter = px.scatter(
+        x=feature_values,
+        y=shap_values,
+        # size='FILM_WATCH_COUNT',
+        # color='SEEN',
+        hover_name=st.session_state['dfs']['shap']['FILM_ID'],
+        size_max=30,
+        template="plotly_dark"
+        )
+    feature_shap_scatter.update_traces(marker_sizemin=10)
+    st.plotly_chart(feature_shap_scatter, theme="streamlit", use_container_width=True)
+
+    tmp_df = watchlist_df.copy().sort_values('ALGO_SCORE', ascending=False).reset_index(drop=True)[['FILM_ID', 'FILM_TITLE', 'FILM_YEAR', 'ALGO_SCORE']]
+    tmp_df['FILM_TITLE_YEAR_ID'] = tmp_df['FILM_TITLE'] + ' - ' + tmp_df['FILM_YEAR'].astype(str) + ' (' + tmp_df['FILM_ID'] + ')'
+    tmp_df = tmp_df.sort_values('ALGO_SCORE', ascending=False)
+    film_name_years = st.multiselect('Select Films:', tmp_df['FILM_TITLE_YEAR_ID'].unique())
+
+    if len(film_name_years) > 0:
+        film_ids = [tmp_df[tmp_df['FILM_TITLE_YEAR_ID']==x]['FILM_ID'].values[0] for x in film_name_years]
+        film_names = [x[:-17] for x in film_name_years]
+        tmp_df = st.session_state['dfs']['shap'][st.session_state['dfs']['shap']['FILM_ID'].isin(film_ids)]
+
+        val_cols = [x for x in tmp_df.columns if len(x)<=5 or x[-5:] != '_SHAP']
+        tmp_df_val = tmp_df[val_cols]
+        melted_df_val = pd.melt(tmp_df_val, id_vars=['FILM_ID', 'FILM_TITLE'])
+
+        shap_cols = ['FILM_ID', 'FILM_TITLE'] + [x for x in tmp_df.columns if len(x)>5 and x[-5:] == '_SHAP']
+        tmp_df_shap = tmp_df[shap_cols]
+        tmp_df_shap.columns = ['FILM_ID', 'FILM_TITLE'] + [x[:-5] for x in tmp_df.columns if len(x)>5 and x[-5:] == '_SHAP']
+        melted_df_shap = pd.melt(tmp_df_shap, id_vars=['FILM_ID', 'FILM_TITLE'])
+
+        melted_df_shap = melted_df_shap[melted_df_shap['value'].abs() > 0.0005].reset_index(drop=True)
+        melted_df_shap.columns = [x.replace('value', 'shap_value') for x in melted_df_shap.columns]
+        melted_df_shap['feature_value'] = melted_df_shap.apply(lambda x: tmp_df_val[tmp_df_val['FILM_ID'] == x['FILM_ID']].loc[:, x['variable']].values[0] if x['variable'] not in ['BASE_VALUE', 'PREDICTION'] else None, axis=1)
+        transposed_df = melted_df_shap.drop('FILM_ID', axis=1).pivot(index='variable', columns='FILM_TITLE', values=['feature_value', 'shap_value'])
+        transposed_df.columns = ['_'.join(col) for col in transposed_df.columns]
+        transposed_df = transposed_df.reset_index()
+        transposed_df = transposed_df.fillna(0)
+        if len(film_names) > 1:
+            transposed_df2 = transposed_df.copy()[['variable', 'feature_value_'+film_names[0], 'feature_value_'+film_names[1], 'shap_value_'+film_names[0], 'shap_value_'+film_names[1]]]
+            transposed_df2.columns = ['variable', film_names[0], film_names[1], film_names[0] + ' SHAP', film_names[1] + ' SHAP']
+            transposed_df2['VAR'] = transposed_df2[film_names[1]+' SHAP'] - transposed_df2[film_names[0]+' SHAP']
+            transposed_df2['ABS_VAR'] = transposed_df2['VAR'].abs()
+            transposed_df2 = transposed_df2[transposed_df2['ABS_VAR'] > 0]
+            transposed_df2 = transposed_df2.sort_values('ABS_VAR', ascending=False)
+        else:
+            transposed_df2 = transposed_df.copy()[['variable', 'feature_value_'+film_names[0], 'shap_value_'+film_names[0]]]
+            transposed_df2.columns = ['variable', film_names[0], film_names[0]+' SHAP']
+            transposed_df2 = transposed_df2.sort_values(film_names[0]+' SHAP', ascending=False)
+        transposed_df2 = transposed_df2.round(3)
+        st.dataframe(transposed_df2, use_container_width=True, hide_index=True)
         
 with filmid_lookup_tab:
     film_search = st.text_input('Enter Film Name or ID:')
