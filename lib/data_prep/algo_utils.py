@@ -325,7 +325,7 @@ def scale_col(df, column, suffix='', a=0, b=1):
     return df
 
 valid_model_types = ['xgboost', 'decision_tree', 'linear_regression']
-default_model = 'xgboost'
+default_model = 'linear_regression'
 
 def run_algo(model_type=default_model):
     assert model_type in valid_model_types, 'model must be one of {} but was passed as {}'.format(valid_model_types, model_type)
@@ -360,7 +360,7 @@ def run_algo(model_type=default_model):
                     'FILM_WATCH_COUNT',
                     'FILM_FAN_COUNT',
                     'FILM_YEAR',
-                    # 'FILM_TOP_250',
+                    'FILM_TOP_250',
                     # 'DIRECTOR_MEAN_RATING',
                     # 'DIRECTOR_TOTAL_FILMS',
                     # 'DIRECTOR_PERCENT_WATCHED',
@@ -377,7 +377,7 @@ def run_algo(model_type=default_model):
         if col_mean <= .01:
             delete_cols.append(col)
     model_features = [x for x in model_features if x not in delete_cols]
-    target = 'FILM_RATING_SCALED'
+    target = 'I_VS_LB'
     model_features = [x for x in model_features if x != target]
     X_train = rated_features[model_features]
     y_train = rated_features[[target]]
@@ -401,6 +401,8 @@ def run_algo(model_type=default_model):
     X_pred = scaler.transform(X_pred)
     pred_df = unrated_features.copy()
     pred_df['ALGO_SCORE'] = model.predict(X_pred)
+    if target == 'I_VS_LB':
+        pred_df['ALGO_SCORE'] = pred_df['FILM_RATING'] + pred_df['ALGO_SCORE']
     print('Predictions complete!')
     # pred_df = scale_col(pred_df, 'ALGO_SCORE')
     final_df = pd.concat([pred_df, rated_features], axis=0).reset_index(drop=True)
