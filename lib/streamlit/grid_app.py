@@ -560,9 +560,13 @@ with year_tab:
                         }
         sort_order4 = st.selectbox('Year Display:', sort_options4.keys())
         sort_obj4 = sort_options4[sort_order4]
-    st.dataframe(year_df, hide_index=True)
+    st.dataframe(year_df, use_container_width=True, hide_index=True)
     st.bar_chart(data=year_df, x='FILM_YEAR', y=sort_obj4['col_name'], use_container_width=True)
-    year_selection = st.selectbox('Select a Year:', np.sort(year_df['FILM_YEAR'].unique()), index=111)
+    year_selection = st.selectbox('', np.sort(year_df['FILM_YEAR'].unique()), index=None, placeholder='Select a Year:', label_visibility='collapsed')
+    if year_selection:
+        st.dataframe(year_df[year_df['FILM_YEAR']==year_selection], use_container_width=True, hide_index=True)
+        algo_features_df_year = st.session_state['dfs']['ranked'][st.session_state['dfs']['ranked']['FILM_YEAR'] == year_selection].reset_index(drop=True)
+        st.dataframe(algo_features_df_year, use_container_width=True, hide_index=True)
 
 with algo_tab:
     algo_feature = st.selectbox('Select a Feature:', st.session_state['dfs']['model_features'])
