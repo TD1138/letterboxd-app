@@ -119,6 +119,7 @@ WHERE b.KEYWORD_ID IS NOT NULL
     st.session_state['dfs']['model_features'] = [x for x in raw_shap_df.columns if x not in ['FILM_ID', 'BASE_VALUE', 'PREDICTION']]
     raw_shap_df.columns = [x if x == 'FILM_ID' else x+'_SHAP' for x in raw_shap_df.columns]
     shap_df = algo_features_df[['FILM_ID', 'FILM_TITLE'] + st.session_state['dfs']['model_features']].merge(raw_shap_df, how='left', on='FILM_ID')
+    shap_df = shap_df.merge(watchlist_df[['FILM_ID', 'RATED']], how='left', on='FILM_ID')
     # shap_df2 = shap_df.drop(['FILM_ID', 'FILM_TITLE', 'ALGO_SCORE'], axis=1)
     # shap_df2.insert(0, 'FILM_ID', st.session_state['dfs']['watchlist']['FILM_ID'])
     # shap_df2.insert(1, 'FILM_TITLE', st.session_state['dfs']['watchlist']['FILM_TITLE'])
@@ -137,11 +138,24 @@ WHERE b.KEYWORD_ID IS NOT NULL
     year_df = select_statement_to_df(year_statement)
     st.session_state['dfs']['year'] = year_df
 
+    diary_statement = 'SELECT WATCH_DATE, SUM(IS_NARRATIVE_FEATURE) AS MOVIE_COUNT, AVG(CASE WHEN IS_NARRATIVE_FEATURE = 1 THEN FILM_RATING END) AS MOVIE_RATING FROM DIARY GROUP BY WATCH_DATE ORDER BY WATCH_DATE ASC'
+    diary_df = select_statement_to_df(diary_statement)
+    diary_df['WATCH_DATE'] = pd.to_datetime(diary_df['WATCH_DATE'])
+    date_range = pd.date_range(start=diary_df['WATCH_DATE'].min(), end=diary_df['WATCH_DATE'].max())
+    diary_df2 = diary_df.set_index('WATCH_DATE').reindex(date_range).fillna(0).rename_axis('WATCH_DATE').reset_index()
+    diary_df2['MOVIE_COUNT_ROLLING_7']   = diary_df2['MOVIE_COUNT'].rolling(window=7).mean()
+    diary_df2['MOVIE_COUNT_ROLLING_28']  = diary_df2['MOVIE_COUNT'].rolling(window=28).mean()
+    diary_df2['MOVIE_RATING_ROLLING_7']  = diary_df2['MOVIE_RATING'].rolling(window=7).mean()
+    diary_df2['MOVIE_RATING_ROLLING_28'] = diary_df2['MOVIE_RATING'].rolling(window=28).mean()
+    diary_df = diary_df2
+    st.session_state['dfs']['diary'] = diary_df
+
 else:
     watchlist_df = st.session_state['dfs']['watchlist']
     director_df = st.session_state['dfs']['director']
     actor_df = st.session_state['dfs']['actor']
     year_df = st.session_state['dfs']['year']
+    diary_df = st.session_state['dfs']['diary']
     
 if 'selected_director' not in st.session_state:
     st.session_state.selected_director = None
@@ -314,10 +328,10 @@ def display_person_grid(people_df, people_per_page=50, people_per_row=10, name_c
 # st.write('st.session_state.selected_actor={}'.format(st.session_state.selected_actor))
 # st.write('st.session_state.selected_director={}'.format(st.session_state.selected_director))
 
-watchlist_tab, ranked_tab, director_tab, actor_tab, year_tab, algo_tab, filmid_lookup_tab = st.tabs(['Watchlist', 'Ranked', 'Director', 'Actor', 'Year', 'Algo', 'FILM_ID Lookup'])
+watchlist_tab, ranked_tab, director_tab, actor_tab, diary_tab, year_tab, algo_tab, filmid_lookup_tab = st.tabs(['Watchlist', 'Ranked', 'Director', 'Actor', 'Diary', 'Year', 'Algo', 'FILM_ID Lookup'])
 
 with watchlist_tab:
-    # st.write(watchlist_df)
+    
     pos0, pos1, pos2, pos3, pos4 = st.columns(5)
     with pos0:
         watchlist_filter = st.radio('Watchlist:', ['Either', 'Yes', 'No'], horizontal=True, index=1)
@@ -390,6 +404,7 @@ with watchlist_tab:
             display_film_grid(watchlist_df, FILMS_PER_PAGE, FILMS_PER_ROW, custom_col=sort_obj)
 
 with ranked_tab:
+
     non_ranking_features = ['FILM_ID', 'FILM_TITLE']
     selectable_features = [x for x in st.session_state['dfs']['ranked'].columns if x not in non_ranking_features]
     # selectable_features.pop(-1)
@@ -480,7 +495,7 @@ with director_tab:
             st.session_state['director_sort_order'] = st.selectbox('Director Sort Order:', sort_options2.keys(), index=list(sort_options2).index(st.session_state['director_sort_order']))
             st.session_state['director_sort_order_persistent'] = st.session_state['director_sort_order']
             sort_obj2 = sort_options2[st.session_state['director_sort_order']]
-            director_df = director_df.sort_values(sort_obj2['col_name'], ascending=sort_obj2['asc'])
+            director_df = director_df.sort_values([sort_obj2['col_name'], 'TOTAL_FILMS'], ascending=[sort_obj2['asc'], False])
         default_displays_values2 = ['Total Films', 'Percent Watched', 'My Mean Rating', 'Letterboxd Mean Rating', 'Total Letterboxd Watches']
         if st.session_state['director_sort_order'] in default_displays_values2:
             display_person_grid(director_df, FILMS_PER_PAGE, FILMS_PER_ROW)
@@ -535,14 +550,21 @@ with actor_tab:
             st.session_state['actor_sort_order'] = st.selectbox('Actor Sort Order:', sort_options3.keys(), index=list(sort_options3).index(st.session_state['actor_sort_order']))
             st.session_state['actor_sort_order_persistent'] = st.session_state['actor_sort_order']
             sort_obj3 = sort_options3[st.session_state['actor_sort_order']]
-            actor_df = actor_df.sort_values(sort_obj3['col_name'], ascending=sort_obj3['asc'])
+            actor_df = actor_df.sort_values([sort_obj3['col_name'], 'TOTAL_FILMS'], ascending=[sort_obj3['asc'], False])
         default_displays_values3 = ['Total Films', 'Percent Watched', 'My Mean Rating', 'Letterboxd Mean Rating', 'Total Letterboxd Watches']
         if st.session_state['actor_sort_order'] in default_displays_values3:
             display_person_grid(actor_df, FILMS_PER_PAGE, FILMS_PER_ROW, name_column='ACTOR_NAME')
         else:
             display_person_grid(actor_df, FILMS_PER_PAGE, FILMS_PER_ROW, name_column='ACTOR_NAME', custom_col=sort_obj3)
 
+with diary_tab:
+    st.line_chart(data=diary_df, x="WATCH_DATE", y=["MOVIE_COUNT_ROLLING_7", "MOVIE_COUNT_ROLLING_28"])
+    st.line_chart(data=diary_df, x="WATCH_DATE", y=["MOVIE_RATING_ROLLING_7", "MOVIE_RATING_ROLLING_28"])
+    st.line_chart(data=diary_df, x="WATCH_DATE", y=["MOVIE_COUNT_ROLLING_7", "MOVIE_COUNT_ROLLING_28", "MOVIE_RATING_ROLLING_7", "MOVIE_RATING_ROLLING_28"])
+    # st.dataframe(st.session_state['dfs']['diary_detail'], use_container_width=True, hide_index=True)
+
 with year_tab:
+
     pos0, pos1, pos2, pos3, pos4 = st.columns([0.6, 0.4, 1, 1, 1])
     with pos4:
         sort_options4 = {
@@ -569,6 +591,9 @@ with year_tab:
         st.dataframe(algo_features_df_year, use_container_width=True, hide_index=True)
 
 with algo_tab:
+
+    st.write(st.session_state['dfs']['shap'])
+
     algo_feature = st.selectbox('Select a Feature:', st.session_state['dfs']['model_features'])
     feature_values = st.session_state['dfs']['shap'][algo_feature]
     shap_values = st.session_state['dfs']['shap'][algo_feature+'_SHAP']
@@ -577,15 +602,15 @@ with algo_tab:
         x=feature_values,
         y=shap_values,
         # size='FILM_WATCH_COUNT',
-        # color='SEEN',
-        hover_name=st.session_state['dfs']['shap']['FILM_ID'],
+        color=st.session_state['dfs']['shap']['RATED'],
+        hover_name=st.session_state['dfs']['shap']['FILM_TITLE'],
         size_max=30,
         template="plotly_dark"
         )
     feature_shap_scatter.update_traces(marker_sizemin=10)
     st.plotly_chart(feature_shap_scatter, theme="streamlit", use_container_width=True)
 
-    tmp_df = watchlist_df.copy().sort_values('ALGO_SCORE', ascending=False).reset_index(drop=True)[['FILM_ID', 'FILM_TITLE', 'FILM_YEAR', 'ALGO_SCORE']]
+    tmp_df = st.session_state['dfs']['ranked'].copy().sort_values('ALGO_SCORE', ascending=False).reset_index(drop=True)[['FILM_ID', 'FILM_TITLE', 'FILM_YEAR', 'ALGO_SCORE']]
     tmp_df['FILM_TITLE_YEAR_ID'] = tmp_df['FILM_TITLE'] + ' - ' + tmp_df['FILM_YEAR'].astype(str) + ' (' + tmp_df['FILM_ID'] + ')'
     tmp_df = tmp_df.sort_values('ALGO_SCORE', ascending=False)
     film_name_years = st.multiselect('Select Films:', tmp_df['FILM_TITLE_YEAR_ID'].unique())
@@ -626,6 +651,7 @@ with algo_tab:
         st.dataframe(transposed_df2, use_container_width=True, hide_index=True)
         
 with filmid_lookup_tab:
+    
     film_search = st.text_input('Enter Film Name or ID:')
     film_id_df = select_statement_to_df('SELECT * FROM FILM_TITLE WHERE (FILM_ID LIKE "%{}%") OR (FILM_TITLE LIKE "%{}%")'.format(film_search, film_search))
     if len(film_id_df) < 50:
