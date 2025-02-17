@@ -6,6 +6,6 @@ import warnings
 warnings.filterwarnings("ignore")
 
 download_db()
-run_algo()
+run_algo(verbose=True)
 precompute_tables()
 upload_db()
