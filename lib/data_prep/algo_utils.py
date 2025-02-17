@@ -325,9 +325,9 @@ def scale_col(df, column, suffix='', a=0, b=1):
     return df
 
 valid_model_types = ['xgboost', 'decision_tree', 'linear_regression']
-default_model = 'linear_regression'
+default_model = 'xgboost'
 
-def run_algo(model_type=default_model):
+def run_algo(model_type=default_model, verbose=False):
     assert model_type in valid_model_types, 'model must be one of {} but was passed as {}'.format(valid_model_types, model_type)
     print('Gathering data for algo run...')
     eligible_watchlist_df = select_statement_to_df(all_features_query)
@@ -368,7 +368,6 @@ def run_algo(model_type=default_model):
                     'philadelphia, pennsylvania',
                     'I_VS_LB'
                     ]
-
     model_features = [x for x in unrated_features.columns if x not in non_features]
     # import ipdb; ipdb.set_trace()
     delete_cols = []
@@ -376,9 +375,14 @@ def run_algo(model_type=default_model):
         col_mean = rated_features[col].mean()
         if col_mean <= .01:
             delete_cols.append(col)
+            del_text = 'delete'
+        else:
+            del_text = 'keep'
+        if verbose: print('Mean of {} is {} - {}'.format(col, col_mean, del_text))
     model_features = [x for x in model_features if x not in delete_cols]
     target = 'I_VS_LB'
     model_features = [x for x in model_features if x != target]
+    if verbose: print('Final model features: {}'.format(model_features))
     X_train = rated_features[model_features]
     y_train = rated_features[[target]]
     print('Data gathering complete!')
@@ -416,9 +420,10 @@ def run_algo(model_type=default_model):
         explainer = shap.TreeExplainer(model)
     elif model_type == 'linear_regression':
         explainer = shap.LinearExplainer(model, X_train)
-    shap_values = explainer.shap_values(X_pred)
-    explainer_df = pd.DataFrame(shap_values, columns=model_features)
-    explainer_df.insert(0, 'FILM_ID', pred_df['FILM_ID'])
+    shap_values_train = explainer.shap_values(X_train)
+    shap_values_pred = explainer.shap_values(X_pred)
+    explainer_df = pd.DataFrame(np.concatenate((shap_values_train, shap_values_pred), axis=0), columns=model_features)
+    explainer_df.insert(0, 'FILM_ID', np.concatenate((rated_features['FILM_ID'], unrated_features['FILM_ID']), axis=0))
     # import ipdb; ipdb.set_trace()
     try:
         ex = explainer.expected_value[0]
