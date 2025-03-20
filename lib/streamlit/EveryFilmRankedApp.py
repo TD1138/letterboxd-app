@@ -35,30 +35,37 @@ all_features_query = """
 
 WITH BASE_TABLE AS (
     
-      SELECT
-      
-        a.FILM_ID
-        ,c.FILM_TITLE
-        ,d.FILM_GENRE
-        ,e.FILM_RATING
-        ,f.FILM_RATING_SCALED
-        ,CASE WHEN f.FILM_RATING_SCALED IS NOT NULL THEN 1 ELSE 0 END AS RATED
-      
-      FROM ALL_FILMS a
-      LEFT JOIN CONTENT_TYPE b
-      ON a.FILM_ID = b.FILM_ID
-      LEFT JOIN FILM_TITLE c
-      ON a.FILM_ID = c.FILM_ID
-      LEFT JOIN FILM_GENRE d
-      ON a.FILM_ID = d.FILM_ID
-      LEFT JOIN FILM_LETTERBOXD_STATS e
-      ON a.FILM_ID = e.FILM_ID
-      LEFT JOIN PERSONAL_RATING f
-      ON a.FILM_ID = f.FILM_ID
-      
-      WHERE CONTENT_TYPE = 'movie'
+    SELECT
+
+      a.FILM_ID
+      ,c.FILM_TITLE
+      ,d.FILM_RATING
+      ,e.FILM_RATING_SCALED
+      ,CASE WHEN e.FILM_RATING_SCALED IS NOT NULL THEN 1 ELSE 0 END AS RATED
+
+    FROM ALL_FILMS a
+    LEFT JOIN CONTENT_TYPE b
+    ON a.FILM_ID = b.FILM_ID
+    LEFT JOIN FILM_TITLE c
+    ON a.FILM_ID = c.FILM_ID
+    LEFT JOIN FILM_LETTERBOXD_STATS d
+    ON a.FILM_ID = d.FILM_ID
+    LEFT JOIN PERSONAL_RATING e
+    ON a.FILM_ID = e.FILM_ID
+
+    WHERE b.CONTENT_TYPE = 'movie'
       
     )
+
+, RECENTLY_WATCHED AS (
+
+    SELECT FILM_ID, 1 AS RECENTLY_WATCHED
+    FROM DIARY
+    WHERE WATCH_DATE >= date('now', '-14 days')
+    AND IS_NARRATIVE_FEATURE = 1
+
+    )
+
 , DIRECTOR_TABLE AS (
 
   SELECT FILM_ID, GROUP_CONCAT(DIRECTOR_NAME, ', ') AS DIRECTOR_NAME FROM ( 
@@ -100,7 +107,26 @@ WITH BASE_TABLE AS (
       ,f.FILM_DECADE
       ,e.FILM_GENRE
       ,e.ALL_FILM_GENRES
+      ,l.ACTION AS GENRE_ACTION
+      ,l.ADVENTURE AS GENRE_ADVENTURE
+      ,l.ANIMATION AS GENRE_ANIMATION
+      ,l.COMEDY AS GENRE_COMEDY
+      ,l.CRIME AS GENRE_CRIME
+      ,l.DRAMA AS GENRE_DRAMA
+      ,l.FAMILY AS GENRE_FAMILY
+      ,l.FANTASY AS GENRE_FANTASY
+      ,l.HISTORY AS GENRE_HISTORY
+      ,l.HORROR AS GENRE_HORROR
+      ,l.MUSIC AS GENRE_MUSIC
+      ,l.MYSTERY AS GENRE_MYSTERY
+      ,l.ROMANCE AS GENRE_ROMANCE
+      ,l."SCIENCE-FICTION" AS GENRE_SCIENCE_FICTION
+      ,l.THRILLER AS GENRE_THRILLER
+      ,l.WAR AS GENRE_WAR
+      ,l.WESTERN AS GENRE_WESTERN
       ,j.COLLECTION_NAME
+      ,COALESCE(m.RECENTLY_WATCHED, 0) AS RECENTLY_WATCHED
+
     
     FROM ALL_FEATURE_FILMS a
     LEFT JOIN FILM_TITLE b
@@ -123,6 +149,10 @@ WITH BASE_TABLE AS (
     ON a.FILM_ID = j.FILM_ID
     LEFT JOIN FILM_LETTERBOXD_TOP_250 k
     ON a.FILM_ID = k.FILM_ID
+    LEFT JOIN FILM_ALGO_SCORE l
+    ON a.FILM_ID = l.FILM_ID
+    LEFT JOIN RECENTLY_WATCHED m
+    ON a.FILM_ID = m.FILM_ID
 
 """
 
@@ -260,9 +290,27 @@ ranking_columns = [
     'DIRECTOR_NAME',
     'FILM_YEAR',
     'FILM_DECADE',
+    'COLLECTION_NAME',
+    'RECENTLY_WATCHED',
     'FILM_GENRE',
     'ALL_FILM_GENRES',
-    'COLLECTION_NAME'
+    'GENRE_ACTION',
+    'GENRE_ADVENTURE',
+    'GENRE_ANIMATION',
+    'GENRE_COMEDY',
+    'GENRE_CRIME',
+    'GENRE_DRAMA',
+    'GENRE_FAMILY',
+    'GENRE_FANTASY',
+    'GENRE_HISTORY',
+    'GENRE_HORROR',
+    'GENRE_MUSIC',
+    'GENRE_MYSTERY',
+    'GENRE_ROMANCE',
+    'GENRE_SCIENCE_FICTION',
+    'GENRE_THRILLER',
+    'GENRE_WAR',
+    'GENRE_WESTERN'
 ]
 
 if 'dfs' not in st.session_state:
@@ -345,7 +393,13 @@ valid_titles = [x[0] + ' (' + str(x[1]) + ') - ' + x[2] for x in all_film_titles
 for word in film_name_search_list:
     valid_titles = [x for x in valid_titles if word in ''.join(ch for ch in x if ch.isalnum()).lower()]
 
-if 0 < len(valid_titles) <= 20: st.session_state['display_dash'] = True
+if len(valid_titles) == 0:
+    st.write('No Valid Titles - please try again')
+elif len(valid_titles) <= 20:
+    st.session_state['display_dash'] = True
+elif len(film_name_search) > 0:
+    if st.checkbox('More than 20 titles - show all?'):
+        st.session_state['display_dash'] = True
 
 if st.session_state['display_dash']:
     selected_film = st.selectbox('Select Film:', valid_titles, on_change=reset_dash)
@@ -359,14 +413,21 @@ if st.session_state['display_dash']:
     valid_df = eligible_watchlist_df[eligible_watchlist_df['FILM_POSITION'].notnull()]
     valid_df = valid_df[(valid_df['FILM_POSITION'] < st.session_state['lowest_allowed_position']) & (valid_df['FILM_POSITION'] > st.session_state['highest_allowed_position'])]
     valid_df = valid_df.sort_values('FILM_POSITION')
+    # st.write(valid_df)
+    # st.write(selected_record)
+    # st.write(selected_record.loc[:, (selected_record != 0).all()])
     col1, col2 = st.columns([0.5, 0.5])
     with col1:
         try:
             tag_columns = [x for x in selected_record.columns if selected_record[x].values[0] == 1.0]
+            tag_columns = [x for x in tag_columns if x not in ranking_columns]
         except:
             tag_columns = []
         for rcol in ranking_columns + tag_columns:
-            rcol_val = selected_record[rcol].values[0]
+            if rcol == 'RECENTLY_WATCHED':
+                rcol_val = 1
+            else:
+                rcol_val = selected_record[rcol].values[0]
             if rcol_val:
                 rcol_df = valid_df[valid_df[rcol]==rcol_val].sort_values('FILM_POSITION').reset_index(drop=True)
                 container = st.expander('**{}={}**'.format(rcol, rcol_val), expanded=True)
