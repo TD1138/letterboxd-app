@@ -385,6 +385,7 @@ def run_algo(model_type=default_model, verbose=False):
     if verbose: print('Final model features: {}'.format(model_features))
     X_train = rated_features[model_features]
     y_train = rated_features[[target]]
+    # y_train = np.square(y_train)
     print('Data gathering complete!')
     print('Scaling features...')
     scaler = StandardScaler()
@@ -400,6 +401,7 @@ def run_algo(model_type=default_model, verbose=False):
         model = LinearRegression()
     model.fit(X_train, y_train)
     print('Model train complete!')
+    print('Model score = {}'.format(model.score(X_train, y_train)))
     print('Making predictions...')
     X_pred = unrated_features[model_features]
     X_pred = scaler.transform(X_pred)
