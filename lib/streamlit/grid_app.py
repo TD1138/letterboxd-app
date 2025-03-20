@@ -111,8 +111,9 @@ WHERE b.KEYWORD_ID IS NOT NULL
     keyword_df['COUNT'] = 1
     keyword_df_wide = pd.pivot_table(keyword_df, values='COUNT', index=['FILM_ID'], columns=['KEYWORD']).fillna(0).reset_index()
     keyword_valid_cols = ['FILM_ID'] + [x for x in keyword_df_wide if x not in algo_features_df.columns]
-    algo_features_df = algo_features_df.merge(keyword_df_wide[keyword_valid_cols], how='left', on='FILM_ID', )
+    algo_features_df = algo_features_df.merge(keyword_df_wide[keyword_valid_cols], how='left', on='FILM_ID')
     algo_features_df[keyword_valid_cols] = algo_features_df[keyword_valid_cols].apply(lambda x: x.fillna(0))
+    # algo_features_df = algo_features_df.merge(select_statement_to_df('SELECT FILM_ID, FILM_RATING_SCALED FROM PERSONAL_RATING'), how='left', on='FILM_ID')
     st.session_state['dfs']['ranked'] = algo_features_df
 
     raw_shap_df = select_statement_to_df('SELECT * FROM FILM_SHAP_VALUES')
@@ -391,6 +392,7 @@ with watchlist_tab:
                 'Letterboxd Fans per Watch': {'print_name': 'Letterboxd Fans per Watch', 'col_name': 'FANS_PER_WATCH', 'asc': False},
                 'Letterboxd Top 250': {'print_name': 'Letterboxd Top 250', 'col_name': 'FILM_TOP_250', 'asc': True},
                 'My Rating vs Letterboxd': {'print_name': 'My Rating vs Letterboxd', 'col_name': 'MY_RATING_VS_LB', 'asc': False},
+                'Algo Score vs Letterboxd': {'print_name': 'Algo Score vs Letterboxd', 'col_name': 'ALGO_SCORE_VS_LB', 'asc': False},
                 'Release Date': {'print_name':'Release Date', 'col_name':'FILM_RELEASE_DATE', 'asc': False},
                 'Film Title': {'print_name': 'Film Title', 'col_name': 'FILM_TITLE', 'asc': True}
                             }
@@ -566,6 +568,22 @@ with diary_tab:
 with year_tab:
 
     pos0, pos1, pos2, pos3, pos4 = st.columns([0.6, 0.4, 1, 1, 1])
+    with pos0:
+        pos0_, pos1_ = st.columns(2)
+        with pos0_:
+            year_from = st.number_input('Year:', value=year_df['FILM_YEAR'].min(), step=1, key='year_from_yearpage')
+        with pos1_:
+            year_to = st.number_input('', value=year_df['FILM_YEAR'].max(), step=1, key='year_to_yearpage')
+        year_df = year_df[(year_df['FILM_YEAR'] >= year_from) & (year_df['FILM_YEAR'] <= year_to)]
+    # with pos2:
+    #     genre_filter = st.multiselect("Select Genre:", sorted(watchlist_df['FILM_GENRE'].unique()))
+    #     if genre_filter:
+    #         for genre in genre_filter:
+    #             watchlist_df = watchlist_df[watchlist_df['ALL_FILM_GENRES'].str.contains(genre)]
+    # with pos3:
+    #     quant_film_lengths = {'Any': 999, '<90m': 90, '<1h40': 100, '<2h': 120, '<3h': 180}
+    #     quant_length_filter = st.radio('Film Length:', quant_film_lengths.keys(), horizontal=True)
+    #     watchlist_df = watchlist_df[watchlist_df['FILM_RUNTIME'] <= quant_film_lengths[quant_length_filter]]
     with pos4:
         sort_options4 = {
             'Total Films': {'print_name': 'Total Films', 'col_name': 'TOTAL_FILMS', 'asc': False},
@@ -573,6 +591,7 @@ with year_tab:
             '% Watched': {'print_name': '% Watched', 'col_name': 'PERCENT_WATCHED', 'asc': False},
             'Films Rated': {'print_name': 'Films Rated', 'col_name': 'FILMS_RATED', 'asc': False},
             '% Rated': {'print_name': '% Rated', 'col_name': 'PERCENT_RATED', 'asc': False},
+            '% Watches Rated': {'print_name': '% Watches Rated', 'col_name': 'PERCENT_WATCHES_RATED', 'asc': False},
             'My Mean Rating': {'print_name': 'My Mean Rating', 'col_name': 'MY_RATING_MEAN', 'asc': False},
             'Letterboxd Mean Rating': {'print_name': 'Letterboxd Mean Rating', 'col_name': 'LETTERBOXD_RATING_MEAN', 'asc': False},
             'Total Letterboxd Watches': {'print_name': 'Total Letterboxd Watches', 'col_name': 'LETTERBOXD_WATCH_COUNT', 'asc': False},
@@ -582,13 +601,13 @@ with year_tab:
                         }
         sort_order4 = st.selectbox('Year Display:', sort_options4.keys())
         sort_obj4 = sort_options4[sort_order4]
-    st.dataframe(year_df, use_container_width=True, hide_index=True)
     st.bar_chart(data=year_df, x='FILM_YEAR', y=sort_obj4['col_name'], use_container_width=True)
+    st.dataframe(year_df, use_container_width=True, hide_index=True)
     year_selection = st.selectbox('', np.sort(year_df['FILM_YEAR'].unique()), index=None, placeholder='Select a Year:', label_visibility='collapsed')
     if year_selection:
         st.dataframe(year_df[year_df['FILM_YEAR']==year_selection], use_container_width=True, hide_index=True)
         algo_features_df_year = st.session_state['dfs']['ranked'][st.session_state['dfs']['ranked']['FILM_YEAR'] == year_selection].reset_index(drop=True)
-        st.dataframe(algo_features_df_year, use_container_width=True, hide_index=True)
+        st.dataframe(algo_features_df_year[['FILM_ID', 'FILM_TITLE', 'FILM_WATCH_COUNT', 'FILM_TOP_250', 'FILM_POSITION', 'FILM_RATING_SCALED', 'FILM_RATING', 'I_VS_LB', 'ALGO_SCORE', 'LIKES_PER_WATCH', 'FANS_PER_WATCH', 'FILM_RUNTIME']], use_container_width=True, hide_index=True)
 
 with algo_tab:
 
