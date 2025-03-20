@@ -162,7 +162,7 @@ def get_ext_ids_plus_content_type(film_id, log_reason='UPDATE', verbose=False):
     soup = BeautifulSoup(r.content, 'lxml')
     tmdb_valid = 1
     try:
-        tmdb_url = soup.find('a', {'data-track-action': 'TMDb'}).get('href')
+        tmdb_url = soup.find('a', {'data-track-action': 'TMDB'}).get('href')
         if tmdb_url[27:32] == 'movie':
             tmdb_id = tmdb_url.replace('https://www.themoviedb.org/movie/', '').replace('/', '')
             content_type = 'movie'
