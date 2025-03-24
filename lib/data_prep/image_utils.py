@@ -53,26 +53,16 @@ def update_posters(total_to_download=100):
 
     posters = [x.replace('.jpg', '') for x in os.listdir(posters_dir)]
 
-    all_films = select_statement_to_df('SELECT FILM_ID FROM FILM_LETTERBOXD_STATS ORDER BY FILM_WATCH_COUNT DESC')['FILM_ID']
+    all_films = select_statement_to_df("""
+                                        SELECT a.FILM_ID
+                                        FROM ALL_FILMS a
+                                        LEFT JOIN FILM_LETTERBOXD_STATS b
+                                        ON a.FILM_ID = b.FILM_ID
+                                        ORDER BY b.FILM_WATCH_COUNT DESC
+                                       """)['FILM_ID']
     all_films_desensitised = [desensitise_case(x) for x in all_films]
     films_no_posters = [x for x in all_films_desensitised if x not in posters][:total_to_download]
     print('There are {} films to get posters for ordered by letterboxd watch count'.format(len(films_no_posters)))
-    film_ids_no_posters = [resensitise_case(x) for x in films_no_posters]
-    for film_id in tqdm(film_ids_no_posters):
-        download_poster(film_id)
-
-    all_films = select_statement_to_df('SELECT FILM_ID FROM FILM_ALGO_SCORE ORDER BY ALGO_SCORE DESC')['FILM_ID']
-    all_films_desensitised = [desensitise_case(x) for x in all_films]
-    films_no_posters = [x for x in all_films_desensitised if x not in posters][:total_to_download]
-    print('There are {} films to get posters for ordered by algo score'.format(len(films_no_posters)))
-    film_ids_no_posters = [resensitise_case(x) for x in films_no_posters]
-    for film_id in tqdm(film_ids_no_posters):
-        download_poster(film_id)
-
-    all_films = select_statement_to_df('SELECT FILM_ID FROM PERSONAL_RATING ORDER BY FILM_RATING_SCALED DESC')['FILM_ID']
-    all_films_desensitised = [desensitise_case(x) for x in all_films]
-    films_no_posters = [x for x in all_films_desensitised if x not in posters][:total_to_download]
-    print('There are {} films to get posters for ordered by my personal rating'.format(len(films_no_posters)))
     film_ids_no_posters = [resensitise_case(x) for x in films_no_posters]
     for film_id in tqdm(film_ids_no_posters):
         download_poster(film_id)
