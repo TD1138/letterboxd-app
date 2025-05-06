@@ -24,14 +24,14 @@ if 'dfs' not in st.session_state:
     st.session_state['dfs']['watchlist'] = watchlist_df
 
     algo_features_df = select_statement_to_df("""
-SELECT a.*, CASE WHEN b.FILM_ID IS NOT NULL THEN 1 ELSE 0 END AS WATCHED, c.LETTERBOXD_URL, d.FILM_POSITION
-FROM FILM_ALGO_SCORE a
-LEFT JOIN WATCHED b
-ON a.FILM_ID = b.FILM_ID
-LEFT JOIN FILM_TITLE c
-ON a.FILM_ID = c.FILM_ID
-LEFT JOIN PERSONAL_RANKING d
-ON a.FILM_ID = d.FILM_ID
+    SELECT a.*, CASE WHEN b.FILM_ID IS NOT NULL THEN 1 ELSE 0 END AS WATCHED, c.LETTERBOXD_URL, d.FILM_POSITION
+    FROM FILM_ALGO_SCORE a
+    LEFT JOIN WATCHED b
+    ON a.FILM_ID = b.FILM_ID
+    LEFT JOIN FILM_TITLE c
+    ON a.FILM_ID = c.FILM_ID
+    LEFT JOIN PERSONAL_RANKING d
+    ON a.FILM_ID = d.FILM_ID
                                               """)
     non_features = ['FILM_TOP_250', 'FILM_RUNTIME', 'DIRECTOR_MEAN_RATING', 'I_VS_LB']
     all_features = algo_features_df.columns
@@ -39,73 +39,73 @@ ON a.FILM_ID = d.FILM_ID
     algo_features_df['IN_LETTERBOXD_TOP_250'] = np.where(algo_features_df['FILM_TOP_250']<251, 1, 0)
     # algo_features_df = algo_features_df[keep_features]
     keyword_query = """
-WITH BASE_TABLE AS (
-    
-    SELECT
-    
-        a.FILM_ID
-        ,c.FILM_TITLE
-        ,d.KEYWORD
-        ,d.KEYWORD_ID
-        ,e.FILM_RATING
-        ,f.FILM_RATING_SCALED
-        ,CASE WHEN f.FILM_RATING_SCALED IS NOT NULL THEN 1 ELSE 0 END AS RATED
-    
-    FROM ALL_FEATURE_FILMS a
-    LEFT JOIN CONTENT_TYPE b
-    ON a.FILM_ID = b.FILM_ID
-    LEFT JOIN FILM_TITLE c
-    ON a.FILM_ID = c.FILM_ID
-    LEFT JOIN FILM_KEYWORDS d
-    ON a.FILM_ID = d.FILM_ID
-    LEFT JOIN FILM_LETTERBOXD_STATS e
-    ON a.FILM_ID = e.FILM_ID
-    LEFT JOIN PERSONAL_RATING f
-    ON a.FILM_ID = f.FILM_ID
-    
-    WHERE b.CONTENT_TYPE = 'movie'
-    
+    WITH BASE_TABLE AS (
+        
+        SELECT
+        
+            a.FILM_ID
+            ,c.FILM_TITLE
+            ,d.KEYWORD
+            ,d.KEYWORD_ID
+            ,e.FILM_RATING
+            ,f.FILM_RATING_SCALED
+            ,CASE WHEN f.FILM_RATING_SCALED IS NOT NULL THEN 1 ELSE 0 END AS RATED
+        
+        FROM ALL_FEATURE_FILMS a
+        LEFT JOIN CONTENT_TYPE b
+        ON a.FILM_ID = b.FILM_ID
+        LEFT JOIN FILM_TITLE c
+        ON a.FILM_ID = c.FILM_ID
+        LEFT JOIN FILM_KEYWORDS d
+        ON a.FILM_ID = d.FILM_ID
+        LEFT JOIN FILM_LETTERBOXD_STATS e
+        ON a.FILM_ID = e.FILM_ID
+        LEFT JOIN PERSONAL_RATING f
+        ON a.FILM_ID = f.FILM_ID
+        
+        WHERE b.CONTENT_TYPE = 'movie'
+        
+        )
+        
+    , SCORE_TABLE AS (
+
+        SELECT
+
+        KEYWORD_ID
+        ,KEYWORD
+        ,AVG(FILM_RATING) AS MEAN_RATING
+        ,AVG(FILM_RATING_SCALED) AS MY_MEAN_RATING
+        ,AVG(FILM_RATING_SCALED) - AVG(FILM_RATING) AS MY_VARIANCE
+        ,((AVG(FILM_RATING_SCALED) - AVG(FILM_RATING)) * ((SUM(RATED)+0.0)/COUNT(*))) AS VARIANCE_SCORE
+        ,COUNT(*) AS KEYWORD_COUNT
+        ,SUM(RATED) AS MY_RATING_COUNT
+        ,(SUM(RATED)+0.0)/COUNT(*) AS SCALER
+        
+        FROM BASE_TABLE
+        
+        WHERE KEYWORD_ID > -1
+        
+        GROUP BY KEYWORD
+        
+        HAVING MY_RATING_COUNT > 0
+        AND KEYWORD_COUNT >= 50
+
     )
-    
-, SCORE_TABLE AS (
 
     SELECT
+        a.FILM_ID
+        ,a.KEYWORD_ID
+        ,b.KEYWORD
+        ,b.KEYWORD_COUNT
+        ,b.MY_RATING_COUNT
+        ,b.MEAN_RATING
+        ,b.MY_MEAN_RATING
+        
+    FROM FILM_KEYWORDS a
+    LEFT JOIN SCORE_TABLE b
+    ON a.KEYWORD_ID = b.KEYWORD_ID
 
-    KEYWORD_ID
-    ,KEYWORD
-    ,AVG(FILM_RATING) AS MEAN_RATING
-    ,AVG(FILM_RATING_SCALED) AS MY_MEAN_RATING
-    ,AVG(FILM_RATING_SCALED) - AVG(FILM_RATING) AS MY_VARIANCE
-    ,((AVG(FILM_RATING_SCALED) - AVG(FILM_RATING)) * ((SUM(RATED)+0.0)/COUNT(*))) AS VARIANCE_SCORE
-    ,COUNT(*) AS KEYWORD_COUNT
-    ,SUM(RATED) AS MY_RATING_COUNT
-    ,(SUM(RATED)+0.0)/COUNT(*) AS SCALER
-    
-    FROM BASE_TABLE
-    
-    WHERE KEYWORD_ID > -1
-    
-    GROUP BY KEYWORD
-    
-    HAVING MY_RATING_COUNT > 0
-    AND KEYWORD_COUNT >= 50
-
-)
-
-SELECT
-    a.FILM_ID
-    ,a.KEYWORD_ID
-    ,b.KEYWORD
-    ,b.KEYWORD_COUNT
-    ,b.MY_RATING_COUNT
-    ,b.MEAN_RATING
-    ,b.MY_MEAN_RATING
-    
-FROM FILM_KEYWORDS a
-LEFT JOIN SCORE_TABLE b
-ON a.KEYWORD_ID = b.KEYWORD_ID
-
-WHERE b.KEYWORD_ID IS NOT NULL
+    WHERE b.KEYWORD_ID IS NOT NULL
 """
     keyword_df = select_statement_to_df(keyword_query)
     keyword_df['COUNT'] = 1
@@ -332,28 +332,32 @@ def display_person_grid(people_df, people_per_page=50, people_per_row=10, name_c
 watchlist_tab, ranked_tab, director_tab, actor_tab, diary_tab, year_tab, algo_tab, filmid_lookup_tab = st.tabs(['Watchlist', 'Ranked', 'Director', 'Actor', 'Diary', 'Year', 'Algo', 'FILM_ID Lookup'])
 
 with watchlist_tab:
-    pos0, pos1, pos2, pos3, pos4 = st.columns(5)
+    pos0, pos1, pos2, pos3, pos4, pos5 = st.columns(6)
     with pos0:
         watchlist_filter = st.radio('Watchlist:', ['Either', 'Yes', 'No'], horizontal=True, index=1)
         if watchlist_filter != 'Either':
             watchlist_df = watchlist_df[watchlist_df['RATED'] == int(watchlist_filter.replace('Yes', '0').replace('No', '1'))]
     with pos1:
+        priority_filter = st.radio('Priority:', ['Either', 'Yes', 'No'], horizontal=True, index=0)
+        if priority_filter != 'Either':
+            watchlist_df = watchlist_df[watchlist_df['PRIORITY_WATCHLIST'] == int(priority_filter.replace('Yes', '1').replace('No', '0'))]
+    with pos2:
         seen_filter = st.radio('Seen', ['Either', 'Yes', 'No'], horizontal=True)
         if seen_filter == 'Yes':
             watchlist_df = watchlist_df[watchlist_df['SEEN'] == 1]
         elif seen_filter == 'No':
             watchlist_df = watchlist_df[watchlist_df['SEEN'] == 0]
-    with pos2:
+    with pos3:
         rated_filter = st.radio('Rated', ['Either', 'Yes', 'No'], horizontal=True)
         if rated_filter == 'Yes':
             watchlist_df = watchlist_df[watchlist_df['RATED'] == 1]
         elif rated_filter == 'No':
             watchlist_df = watchlist_df[watchlist_df['RATED'] == 0]
-    with pos3:
+    with pos4:
         streaming_filter = st.radio('Streaming:', ['Either', 'Yes', 'No'], horizontal=True)
         if streaming_filter != 'Either':
             watchlist_df = watchlist_df[watchlist_df['STREAMING'] == streaming_filter]
-    with pos4:
+    with pos5:
         services = select_statement_to_df('SELECT DISTINCT STREAMING_SERVICE_FULL FROM FILM_STREAMING_SERVICES')['STREAMING_SERVICE_FULL'].tolist()
         specific_streaming_filter = st.selectbox('Specific Service:', services, index=None)
         if specific_streaming_filter:

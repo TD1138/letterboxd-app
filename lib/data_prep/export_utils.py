@@ -114,7 +114,7 @@ def refresh_core_tables(verbose=False):
     ranking_list['FILM_POSITION'] = ranking_list['FILM_POSITION'].astype('Int64')
     df_to_table(ranking_list[['FILM_ID', 'FILM_POSITION']], 'PERSONAL_RANKING', replace_append='replace', verbose=verbose)
 
-    priority_watchlist_df = exportfile_to_df('lists\\priority-watchlist.csv', skiprows=3)
+    priority_watchlist_df = exportfile_to_df('lists/priority-watchlist.csv', skiprows=3)
     priority_watchlist_df['FILM_ID'] = priority_watchlist_df['URL'].apply(convert_uri_to_id)
     df_to_table(priority_watchlist_df[['FILM_ID']], 'PRIORITY_WATCHLIST', replace_append='replace', verbose=verbose)
 
