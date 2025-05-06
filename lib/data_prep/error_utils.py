@@ -163,6 +163,32 @@ def correct_collection_name_mismatches(film_ids=None, refresh=False, dryrun=Fals
     successful_films = len(films_to_correct) - errors
     print('Corrected collection names for {} films ({:.2%})'.format(successful_films, successful_films/len(films_to_correct)))
 
+def correct_release_date_mismatches(film_ids=None, refresh=False, dryrun=False, film_limit=1000):
+    if film_ids:
+        total_films_to_correct = film_ids
+        films_to_correct = total_films_to_correct[:film_limit]
+    else:
+        release_date_issue_films_to_correct = get_film_ids_from_select_statement(release_date_issue_select_statement)
+        total_films_to_correct = release_date_issue_films_to_correct
+        films_to_correct = total_films_to_correct[:film_limit]
+    print('In total, there are {} films with release date mismatches - correcting {}'.format(len(total_films_to_correct), len(films_to_correct)))
+    if dryrun:
+        print(films_to_correct[:10])
+        return
+    elif len(films_to_correct) == 0:
+        return
+    errors = 0
+    for film_id in tqdm(films_to_correct):
+        try:
+            if refresh:
+                ingest_film(film_id, log_reason='CORRECTION_RELEASE_DATE')
+            else:
+                update_tmbd_metadata(film_id, log_reason='CORRECTION_RELEASE_DATE')
+        except:
+            errors += 1
+    successful_films = len(films_to_correct) - errors
+    print('Corrected release date mismatches for {} films ({:.2%})'.format(successful_films, successful_films/len(films_to_correct)))
+
 def correct_all_errors(film_ids=None, refresh=False, dryrun=False, film_limit=100):
     load_dotenv(override=True)
     correct_letterboxd_stats_errors(film_ids, refresh=refresh, dryrun=dryrun, film_limit=film_limit)
@@ -170,6 +196,7 @@ def correct_all_errors(film_ids=None, refresh=False, dryrun=False, film_limit=10
     correct_ext_ids_plus_content_type_errors(film_ids, refresh=refresh, dryrun=dryrun, film_limit=film_limit)
     correct_tmdb_metadata_errors(film_ids, refresh=refresh, dryrun=dryrun, film_limit=film_limit*10)
     correct_collection_name_mismatches(film_ids, refresh=refresh, dryrun=dryrun, film_limit=film_limit)
+    correct_release_date_mismatches(film_ids, refresh=refresh, dryrun=dryrun, film_limit=film_limit)
 
 title_select_statement = ("""
 
@@ -463,4 +490,28 @@ SELECT
 FROM BASE_TABLE a
 LEFT JOIN FILM_COLLECTIONS b
 ON a.COLLECTION_ID = b.COLLECTION_ID
+""")
+
+release_date_issue_select_statement = ("""
+
+SELECT
+
+	 a.FILM_ID
+	,COALESCE(julianday('now') - julianday(b.CREATED_AT), 99) AS DAYS_SINCE_LAST_UPDATE
+
+FROM ALL_FILMS a
+
+LEFT JOIN FILM_RELEASE_INFO b
+ON a.FILM_ID = b.FILM_ID
+
+LEFT JOIN TMDB_ID c
+ON a.FILM_ID = c.FILM_ID
+
+LEFT JOIN FILM_YEAR d
+ON a.FILM_ID = d.FILM_ID
+
+WHERE c.VALID = 1
+AND DAYS_SINCE_LAST_UPDATE > 7
+AND substr(b.FILM_RELEASE_DATE, 0, 5) != d.FILM_YEAR
+
 """)
