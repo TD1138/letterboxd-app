@@ -120,7 +120,7 @@ WHERE b.KEYWORD_ID IS NOT NULL
     st.session_state['dfs']['model_features'] = [x for x in raw_shap_df.columns if x not in ['FILM_ID', 'BASE_VALUE', 'PREDICTION']]
     raw_shap_df.columns = [x if x == 'FILM_ID' else x+'_SHAP' for x in raw_shap_df.columns]
     shap_df = algo_features_df[['FILM_ID', 'FILM_TITLE'] + st.session_state['dfs']['model_features']].merge(raw_shap_df, how='left', on='FILM_ID')
-    shap_df = shap_df.merge(watchlist_df[['FILM_ID', 'RATED']], how='left', on='FILM_ID')
+    shap_df = shap_df.merge(watchlist_df[['FILM_ID', 'RATED', 'MY_RATING_VS_LB']], how='left', on='FILM_ID')
     # shap_df2 = shap_df.drop(['FILM_ID', 'FILM_TITLE', 'ALGO_SCORE'], axis=1)
     # shap_df2.insert(0, 'FILM_ID', st.session_state['dfs']['watchlist']['FILM_ID'])
     # shap_df2.insert(1, 'FILM_TITLE', st.session_state['dfs']['watchlist']['FILM_TITLE'])
@@ -332,7 +332,6 @@ def display_person_grid(people_df, people_per_page=50, people_per_row=10, name_c
 watchlist_tab, ranked_tab, director_tab, actor_tab, diary_tab, year_tab, algo_tab, filmid_lookup_tab = st.tabs(['Watchlist', 'Ranked', 'Director', 'Actor', 'Diary', 'Year', 'Algo', 'FILM_ID Lookup'])
 
 with watchlist_tab:
-    
     pos0, pos1, pos2, pos3, pos4 = st.columns(5)
     with pos0:
         watchlist_filter = st.radio('Watchlist:', ['Either', 'Yes', 'No'], horizontal=True, index=1)
@@ -616,18 +615,34 @@ with algo_tab:
     algo_feature = st.selectbox('Select a Feature:', st.session_state['dfs']['model_features'])
     feature_values = st.session_state['dfs']['shap'][algo_feature]
     shap_values = st.session_state['dfs']['shap'][algo_feature+'_SHAP']
-    # st.dataframe(shap_values)
-    feature_shap_scatter = px.scatter(
-        x=feature_values,
-        y=shap_values,
-        # size='FILM_WATCH_COUNT',
-        color=st.session_state['dfs']['shap']['RATED'],
-        hover_name=st.session_state['dfs']['shap']['FILM_TITLE'],
-        size_max=30,
-        template="plotly_dark"
-        )
-    feature_shap_scatter.update_traces(marker_sizemin=10)
-    st.plotly_chart(feature_shap_scatter, theme="streamlit", use_container_width=True)
+    rated_values = ['Unrated' if x == 0 else 'Rated' for x in st.session_state['dfs']['shap']['RATED']]
+    IVLB_values = st.session_state['dfs']['shap']['MY_RATING_VS_LB']
+    # st.dataframe(st.session_state['dfs']['watchlist'])
+    left_chart, right_chart = st.columns([1, 1])
+    with left_chart:
+        feature_IVLB_scatter = px.box(
+            x=feature_values,
+            y=IVLB_values,
+            hover_name=st.session_state['dfs']['shap']['FILM_TITLE'],
+            color=rated_values,
+            color_discrete_map={'Unrated': 'orange', 'Rated': 'blue'},
+            points='all',
+            template="plotly_dark"
+            )
+        # feature_IVLB_scatter.update_traces(marker_sizemin=10)
+        st.plotly_chart(feature_IVLB_scatter, theme="streamlit", use_container_width=True)
+    with right_chart:
+        feature_shap_scatter = px.scatter(
+            x=feature_values,
+            y=shap_values,
+            color=rated_values,
+            color_discrete_map={'Unrated': 'orange', 'Rated': 'blue'},
+            hover_name=st.session_state['dfs']['shap']['FILM_TITLE'],
+            size_max=30,
+            template="plotly_dark"
+            )
+        feature_shap_scatter.update_traces(marker_sizemin=10)
+        st.plotly_chart(feature_shap_scatter, theme="streamlit", use_container_width=True)
 
     tmp_df = st.session_state['dfs']['ranked'].copy().sort_values('ALGO_SCORE', ascending=False).reset_index(drop=True)[['FILM_ID', 'FILM_TITLE', 'FILM_YEAR', 'ALGO_SCORE']]
     tmp_df['FILM_TITLE_YEAR_ID'] = tmp_df['FILM_TITLE'] + ' - ' + tmp_df['FILM_YEAR'].astype(str) + ' (' + tmp_df['FILM_ID'] + ')'
