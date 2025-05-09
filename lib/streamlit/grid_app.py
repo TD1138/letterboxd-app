@@ -363,7 +363,7 @@ with watchlist_tab:
         if specific_streaming_filter:
             watchlist_df = watchlist_df[watchlist_df['STREAMING_SERVICES'].str.contains(specific_streaming_filter)]
     if len(watchlist_df) > 0:
-        pos0, pos1, pos2, pos3, pos4 = st.columns([0.6, 0.4, 1, 1, 1])
+        pos0, pos1, pos2, pos3, pos4, pos5 = st.columns([0.6, 0.4, 1, 1, 1, 0.5])
         
         with pos0:
             released_filter = st.radio('Released:', ['Either', 'Yes', 'No'], horizontal=True)
@@ -401,7 +401,12 @@ with watchlist_tab:
                             }
             sort_order = st.selectbox('Sort Order:', sort_options.keys())
             sort_obj = sort_options[sort_order]
-            watchlist_df = watchlist_df.sort_values(sort_obj['col_name'], ascending=sort_obj['asc'])
+        with pos5:
+            st.write("")
+            st.write("")
+            reverse_sort_order = st.toggle("Reverse Sort Order")
+        sort_order_final = sort_obj['asc'] ^ reverse_sort_order
+        watchlist_df = watchlist_df.sort_values(sort_obj['col_name'], ascending=sort_order_final)
         default_displays_values = ['Algo Score', 'Letterboxd Watch Count', 'Letterboxd Rating']
         if sort_order in default_displays_values:
             display_film_grid(watchlist_df, FILMS_PER_PAGE, FILMS_PER_ROW)
