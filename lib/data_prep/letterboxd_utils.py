@@ -3,6 +3,7 @@ import pandas as pd
 import os
 import json
 import requests
+import cloudscraper
 from datetime import datetime
 from bs4 import BeautifulSoup
 from sqlite_utils import get_from_table, insert_record_into_table, delete_records, replace_record, update_record, df_to_table, table_to_df
@@ -94,10 +95,11 @@ def get_letterboxd_top_250():
 
 def get_letterboxd_rating(film_id):
     letterboxd_url = get_from_table('FILM_TITLE', film_id, 'LETTERBOXD_URL')
-    r = requests.get(letterboxd_url)
+    scraper = cloudscraper.create_scraper()
+    r = scraper.get(letterboxd_url)
     redirected_url = r.url
     if letterboxd_url != redirected_url:
-        r = requests.get(redirected_url)
+        r = scraper.get(redirected_url)
     soup = BeautifulSoup(r.content, 'lxml')
     rating_dict = json.loads(soup.find('script', {'type':"application/ld+json"}).string.split('\n')[2]).get('aggregateRating')
     try:
