@@ -9,10 +9,12 @@ from precompute_tables import precompute_tables
 from gcp_utils import download_db, upload_db, backup_db
 from image_utils import update_images
 import sys
-from datetime import date
+from datetime import date, datetime
 
 import warnings
 warnings.filterwarnings("ignore")
+
+update_start = datetime.now()
 
 download_db()
 if len(sys.argv) > 1:
@@ -39,3 +41,9 @@ cleanup_exports_folder()
 upload_db()
 if date.today().weekday() == 0:
     backup_db()
+
+update_end = datetime.now()
+
+update_total_seconds = update_end - update_start
+
+print('Update finished at {} and took {} seconds'.format(update_end.strftime('%Y-%m-%d %H:%M'), update_total_seconds))
