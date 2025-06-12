@@ -622,7 +622,12 @@ with algo_tab:
     st.write(st.session_state['dfs']['shap'])
 
     algo_feature = st.selectbox('Select a Feature:', st.session_state['dfs']['model_features'])
-    feature_values = st.session_state['dfs']['shap'][algo_feature]
+    feature_values_raw = st.session_state['dfs']['shap'][algo_feature]
+    bin_count = 20
+    if len(feature_values_raw.unique()) > bin_count:
+        feature_values = pd.cut(feature_values_raw, bins=bin_count).apply(lambda x: round(x.mid, 3))
+    else:
+        feature_values = feature_values_raw
     shap_values = st.session_state['dfs']['shap'][algo_feature+'_SHAP']
     rated_values = ['Unrated' if x == 0 else 'Rated' for x in st.session_state['dfs']['shap']['RATED']]
     IVLB_values = st.session_state['dfs']['shap']['MY_RATING_VS_LB']
@@ -642,7 +647,7 @@ with algo_tab:
         st.plotly_chart(feature_IVLB_scatter, theme="streamlit", use_container_width=True)
     with right_chart:
         feature_shap_scatter = px.scatter(
-            x=feature_values,
+            x=feature_values_raw,
             y=shap_values,
             color=rated_values,
             color_discrete_map={'Unrated': 'orange', 'Rated': 'blue'},
