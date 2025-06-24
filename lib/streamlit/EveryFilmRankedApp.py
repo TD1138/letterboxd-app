@@ -402,40 +402,42 @@ elif len(film_name_search) > 0:
         st.session_state['display_dash'] = True
 
 if st.session_state['display_dash']:
-    selected_film = st.selectbox('Select Film:', valid_titles, on_change=reset_dash)
-    selected_film_id = selected_film.split(' - ')[-1]
-    selected_record = eligible_watchlist_df[eligible_watchlist_df['FILM_ID']==selected_film_id]
-    col1, col2 = st.columns([1,1])
-    with col1:
-        highest_allowed_position = st.number_input('Highest Position:', step=1, key='highest_allowed_position')
-    with col2:
-        lowest_allowed_position = st.number_input('Lowest Position:', step=1, key='lowest_allowed_position')
-    valid_df = eligible_watchlist_df[eligible_watchlist_df['FILM_POSITION'].notnull()]
-    valid_df = valid_df[(valid_df['FILM_POSITION'] < st.session_state['lowest_allowed_position']) & (valid_df['FILM_POSITION'] > st.session_state['highest_allowed_position'])]
-    valid_df = valid_df.sort_values('FILM_POSITION')
-    # st.write(valid_df)
-    # st.write(selected_record)
-    # st.write(selected_record.loc[:, (selected_record != 0).all()])
-    col1, col2 = st.columns([0.5, 0.5])
-    with col1:
-        try:
-            tag_columns = [x for x in selected_record.columns if selected_record[x].values[0] == 1.0]
-            tag_columns = [x for x in tag_columns if x not in ranking_columns]
-        except:
-            tag_columns = []
-        for rcol in ranking_columns + tag_columns:
-            if rcol == 'RECENTLY_WATCHED':
-                rcol_val = 1
-            else:
-                rcol_val = selected_record[rcol].values[0]
-            if rcol_val:
-                rcol_df = valid_df[valid_df[rcol]==rcol_val].sort_values('FILM_POSITION').reset_index(drop=True)
-                container = st.expander('**{}={}**'.format(rcol, rcol_val), expanded=True)
-                with container:
-                    display_film_grid(rcol_df.tail(50))
-        st.write('**All films:**')
-        display_film_grid(valid_df.tail(50))
-    with col2:
-        selected_record['FILM_POSITION'] = int((st.session_state['lowest_allowed_position'] + st.session_state['highest_allowed_position'])/2)
-        selected_record['FILM_RATING_SCALED'] = valid_df['FILM_RATING_SCALED'].mean()
-        display_film_grid(selected_record)
+    selected_film = st.selectbox('Select Film:', valid_titles, on_change=reset_dash, index=None)
+    if selected_film:
+        selected_film_id = selected_film.split(' - ')[-1]
+        selected_record = eligible_watchlist_df[eligible_watchlist_df['FILM_ID']==selected_film_id]
+        col1, col2 = st.columns([1,1])
+        with col1:
+            highest_allowed_position = st.number_input('Highest Position:', step=1, key='highest_allowed_position')
+        with col2:
+            lowest_allowed_position = st.number_input('Lowest Position:', step=1, key='lowest_allowed_position')
+        valid_df = eligible_watchlist_df[eligible_watchlist_df['FILM_POSITION'].notnull()]
+        valid_df = valid_df[(valid_df['FILM_POSITION'] < st.session_state['lowest_allowed_position']) & (valid_df['FILM_POSITION'] > st.session_state['highest_allowed_position'])]
+        valid_df = valid_df.sort_values('FILM_POSITION')
+        st.write(selected_film_id)
+        # st.write(valid_df)
+        # st.write(selected_record)
+        # st.write(selected_record.loc[:, (selected_record != 0).all()])
+        col1, col2 = st.columns([0.5, 0.5])
+        with col1:
+            try:
+                tag_columns = [x for x in selected_record.columns if selected_record[x].values[0] == 1.0]
+                tag_columns = [x for x in tag_columns if x not in ranking_columns]
+            except:
+                tag_columns = []
+            for rcol in ranking_columns + tag_columns:
+                if rcol == 'RECENTLY_WATCHED':
+                    rcol_val = 1
+                else:
+                    rcol_val = selected_record[rcol].values[0]
+                if rcol_val:
+                    rcol_df = valid_df[valid_df[rcol]==rcol_val].sort_values('FILM_POSITION').reset_index(drop=True)
+                    container = st.expander('**{}={}**'.format(rcol, rcol_val), expanded=True)
+                    with container:
+                        display_film_grid(rcol_df.tail(50))
+            st.write('**All films:**')
+            display_film_grid(valid_df.tail(50))
+        with col2:
+            selected_record['FILM_POSITION'] = int((st.session_state['lowest_allowed_position'] + st.session_state['highest_allowed_position'])/2)
+            selected_record['FILM_RATING_SCALED'] = valid_df['FILM_RATING_SCALED'].mean()
+            display_film_grid(selected_record)
