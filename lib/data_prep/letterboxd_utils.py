@@ -115,7 +115,8 @@ def get_letterboxd_rating(film_id):
 def get_letterboxd_metrics(film_id):
     film_url_title = get_from_table('FILM_URL_TITLE', film_id, 'FILM_URL_TITLE')
     initial_url = 'https://letterboxd.com/film/{}/members/rated/.5-5/'.format(film_url_title)
-    r = requests.get(initial_url)
+    scraper = cloudscraper.create_scraper()
+    r = scraper.get(initial_url)
     redirected_url = r.url
     if initial_url != redirected_url:
         new_film_url_title = redirected_url.replace('https://letterboxd.com/film/', '').replace('/members/rated/.5-5/', '')
@@ -124,6 +125,7 @@ def get_letterboxd_metrics(film_id):
                       column_value=new_film_url_title,
                       film_id=film_id)
         film_url_title = new_film_url_title
+        r = scraper.get(redirected_url)
     soup = BeautifulSoup(r.content, 'lxml')
     metrics_dict = {}
     for i in ['members', 'fans', 'likes', 'reviews', 'lists']:
