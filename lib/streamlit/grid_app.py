@@ -377,7 +377,8 @@ with watchlist_tab:
                 year_to = st.number_input('', value=watchlist_df['FILM_YEAR'].max(), step=1)
             watchlist_df = watchlist_df[(watchlist_df['FILM_YEAR'] >= year_from) & (watchlist_df['FILM_YEAR'] <= year_to)]
         with pos2:
-            genre_filter = st.multiselect("Select Genre:", sorted(watchlist_df['FILM_GENRE'].unique()))
+            genres = [x for x in watchlist_df['FILM_GENRE'].unique() if x]
+            genre_filter = st.multiselect("Select Genre:", sorted(genres))
             if genre_filter:
                 for genre in genre_filter:
                     watchlist_df = watchlist_df[watchlist_df['ALL_FILM_GENRES'].str.contains(genre)]
