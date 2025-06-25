@@ -1,15 +1,12 @@
 import numpy as np
 import pandas as pd
-import os
 import json
-import requests
 import cloudscraper
 from datetime import datetime
 from bs4 import BeautifulSoup
 from sqlite_utils import get_from_table, insert_record_into_table, delete_records, replace_record, update_record, df_to_table, table_to_df
 from tmdbv3api import Person
 from PIL import Image
-import io
 import re
 from dotenv import load_dotenv
 
@@ -17,10 +14,11 @@ load_dotenv()
 
 def get_metadata_from_letterboxd(film_id, log_reason='UPDATE', verbose=False):
     letterboxd_url = get_from_table('FILM_TITLE', film_id, 'LETTERBOXD_URL')
-    r = requests.get(letterboxd_url)
+    scraper = cloudscraper.create_scraper()
+    r = scraper.get(letterboxd_url)
     redirected_url = r.url
     if letterboxd_url != redirected_url:
-        r = requests.get(redirected_url)
+        r = scraper.get(redirected_url)
     soup = BeautifulSoup(r.content, 'lxml')
     og_url = soup.find('meta', {'property': 'og:url'}).get('content')
     film = og_url.split('/')[-2]
@@ -45,10 +43,11 @@ def get_metadata_from_letterboxd(film_id, log_reason='UPDATE', verbose=False):
 
 def get_cast_from_letterboxd(film_id, verbose=False):
     letterboxd_url = get_from_table('FILM_TITLE', film_id, 'LETTERBOXD_URL')
-    r = requests.get(letterboxd_url)
+    scraper = cloudscraper.create_scraper()
+    r = scraper.get(letterboxd_url)
     redirected_url = r.url
     if letterboxd_url != redirected_url:
-        r = requests.get(redirected_url)    
+        r = scraper.get(redirected_url)    
     soup = BeautifulSoup(r.content, 'lxml')
     cast = soup.find('div', {'id': 'tab-cast'}).findAll('a')
     cast_record = {
@@ -64,10 +63,11 @@ def get_cast_from_letterboxd(film_id, verbose=False):
 
 # def get_crew_from_letterboxd(film_id, verbose=False):
 #     letterboxd_url = get_from_table('FILM_TITLE', film_id, 'LETTERBOXD_URL')
-#     r = requests.get(letterboxd_url)
+#     scraper = cloudscraper.create_scraper()
+#     r = scraper.get(letterboxd_url)
 #     redirected_url = r.url
 #     if letterboxd_url != redirected_url:
-#         r = requests.get(redirected_url)    
+#         r = scraper.get(redirected_url)    
 #     soup = BeautifulSoup(r.content, 'lxml')
 #     crew = soup.find('div', {'id': 'tab-cast'}).findAll('a')
 #     cast_record = {
@@ -84,7 +84,8 @@ def get_cast_from_letterboxd(film_id, verbose=False):
 def get_letterboxd_top_250():
     top_250_url_titles = []
     for p in [1, 2, 3]:
-        r = requests.get('https://letterboxd.com/dave/list/official-top-250-narrative-feature-films/page/{}/'.format(p))
+        scraper = cloudscraper.create_scraper()
+        r = scraper.get('https://letterboxd.com/dave/list/official-top-250-narrative-feature-films/page/{}/'.format(p))
         soup = BeautifulSoup(r.content, 'lxml')
         top_250_url_titles += [x.find('div').get('data-film-slug') for x in soup.findAll('li', {'class': 'poster-container numbered-list-item'})]
     top_250_url_titles_df = pd.DataFrame(top_250_url_titles, columns=['FILM_URL_TITLE'])
@@ -157,12 +158,13 @@ def update_letterboxd_stats(film_id, log_reason='UPDATE', verbose=False):
 
 def get_ext_ids_plus_content_type(film_id, log_reason='UPDATE', verbose=False):
     letterboxd_url = get_from_table('FILM_TITLE', film_id, 'LETTERBOXD_URL')
-    r = requests.get(letterboxd_url)
+    scraper = cloudscraper.create_scraper()
+    r = scraper.get(letterboxd_url)
     if r.status_code != 200:
         return
     redirected_url = r.url
     if letterboxd_url != redirected_url:
-        r = requests.get(redirected_url)
+        r = scraper.get(redirected_url)
     soup = BeautifulSoup(r.content, 'lxml')
     tmdb_valid = 1
     try:
@@ -215,7 +217,8 @@ def get_ext_ids_plus_content_type(film_id, log_reason='UPDATE', verbose=False):
 def get_poster_url(film_id):
     try:
         film_url_title = get_from_table('FILM_URL_TITLE', film_id, 'FILM_URL_TITLE')
-        r = requests.get('https://letterboxd.com/film/{}/'.format(film_url_title))
+        scraper = cloudscraper.create_scraper()
+        r = scraper.get('https://letterboxd.com/film/{}/'.format(film_url_title))
         soup = BeautifulSoup(r.content, 'lxml')
         image_tag = str([x for x in soup.findAll('script') if 'image":' in str(x)][0])
         image_tag2 = image_tag[image_tag.find('image')+8:]

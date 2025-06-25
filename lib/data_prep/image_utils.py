@@ -1,6 +1,6 @@
 import os
 from tqdm import tqdm
-import requests
+import cloudscraper
 import io
 from PIL import Image
 from datetime import datetime
@@ -15,7 +15,8 @@ portraits_dir = 'C:\\Users\\tom\\Desktop\\dev\\PersonalProjects\\letterboxd-app\
 def download_image_from_url(url, save_path, verbose=False):
     try:
         # Send a GET request to the URL
-        response = requests.get(url, stream=True)
+        scraper = cloudscraper.create_scraper()
+        response = scraper.get(url, stream=True)
         response.raise_for_status()  # Raise an exception for bad status codes
 
         # Open the image using PIL
@@ -25,7 +26,7 @@ def download_image_from_url(url, save_path, verbose=False):
         image.save(save_path)
         if verbose: print(f"Image successfully downloaded: {save_path}")
         return True
-    except requests.exceptions.RequestException as e:
+    except scraper.exceptions.RequestException as e:
         print(f"Error downloading image: {e}")
     except IOError as e:
         print(f"Error saving image: {e}")
