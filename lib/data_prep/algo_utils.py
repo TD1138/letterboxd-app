@@ -337,7 +337,8 @@ def run_algo(model_type=default_model, verbose=False):
     keyword_df = select_statement_to_df(keyword_query)
     keyword_df['COUNT'] = 1
     keyword_df_wide = pd.pivot_table(keyword_df, values='COUNT', index=['FILM_ID'], columns=['KEYWORD']).fillna(0).reset_index()
-    eligible_watchlist_df = eligible_watchlist_df.merge(keyword_df_wide, how='left', on='FILM_ID')
+    non_duped_cols = [x for x in keyword_df_wide.columns if x not in eligible_watchlist_df.columns or x == 'FILM_ID']
+    eligible_watchlist_df = eligible_watchlist_df.merge(keyword_df_wide[non_duped_cols], how='left', on='FILM_ID')
     # top_actor_film_level_df = select_statement_to_df(top_actor_film_level_query)
     # actor_lookup_df = top_actor_film_level_df.groupby(['PERSON_ID', 'ACTOR_NAME']).count().reset_index()
     # actor_lookup_dict = {id:name for id, name in zip(actor_lookup_df['PERSON_ID'], actor_lookup_df['ACTOR_NAME'])}
