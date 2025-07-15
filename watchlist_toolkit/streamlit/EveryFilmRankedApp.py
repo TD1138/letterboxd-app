@@ -1,10 +1,14 @@
+import streamlit as st
 import numpy as np
 import pandas as pd
-import streamlit as st
-from dotenv import load_dotenv
-import sys
-sys.path.insert(0, '../data_prep')
-from sqlite_utils import select_statement_to_df
+from PIL import Image
+import os
+from watchlist_toolkit.data_prep.sqlite_utils import select_statement_to_df
+from watchlist_toolkit.data_prep.letterboxd_utils import desensitise_case
+
+st.set_page_config(layout="wide")
+
+poster_dir = '..\\..\\db\\posters\\'
 
 all_film_titles_query = """
 
@@ -25,30 +29,37 @@ all_features_query = """
 
 WITH BASE_TABLE AS (
     
-      SELECT
-      
-        a.FILM_ID
-        ,c.FILM_TITLE
-        ,d.FILM_GENRE
-        ,e.FILM_RATING
-        ,f.FILM_RATING_SCALED
-        ,CASE WHEN f.FILM_RATING_SCALED IS NOT NULL THEN 1 ELSE 0 END AS RATED
-      
-      FROM ALL_FILMS a
-      LEFT JOIN CONTENT_TYPE b
-      ON a.FILM_ID = b.FILM_ID
-      LEFT JOIN FILM_TITLE c
-      ON a.FILM_ID = c.FILM_ID
-      LEFT JOIN FILM_GENRE d
-      ON a.FILM_ID = d.FILM_ID
-      LEFT JOIN FILM_LETTERBOXD_STATS e
-      ON a.FILM_ID = e.FILM_ID
-      LEFT JOIN PERSONAL_RATING f
-      ON a.FILM_ID = f.FILM_ID
-      
-      WHERE CONTENT_TYPE = 'movie'
+    SELECT
+
+      a.FILM_ID
+      ,c.FILM_TITLE
+      ,d.FILM_RATING
+      ,e.FILM_RATING_SCALED
+      ,CASE WHEN e.FILM_RATING_SCALED IS NOT NULL THEN 1 ELSE 0 END AS RATED
+
+    FROM ALL_FILMS a
+    LEFT JOIN CONTENT_TYPE b
+    ON a.FILM_ID = b.FILM_ID
+    LEFT JOIN FILM_TITLE c
+    ON a.FILM_ID = c.FILM_ID
+    LEFT JOIN FILM_LETTERBOXD_STATS d
+    ON a.FILM_ID = d.FILM_ID
+    LEFT JOIN PERSONAL_RATING e
+    ON a.FILM_ID = e.FILM_ID
+
+    WHERE b.CONTENT_TYPE = 'movie'
       
     )
+
+, RECENTLY_WATCHED AS (
+
+    SELECT FILM_ID, 1 AS RECENTLY_WATCHED
+    FROM DIARY
+    WHERE WATCH_DATE >= date('now', '-14 days')
+    AND IS_NARRATIVE_FEATURE = 1
+
+    )
+
 , DIRECTOR_TABLE AS (
 
   SELECT FILM_ID, GROUP_CONCAT(DIRECTOR_NAME, ', ') AS DIRECTOR_NAME FROM ( 
@@ -90,9 +101,29 @@ WITH BASE_TABLE AS (
       ,f.FILM_DECADE
       ,e.FILM_GENRE
       ,e.ALL_FILM_GENRES
+      ,l.ACTION AS GENRE_ACTION
+      ,l.ADVENTURE AS GENRE_ADVENTURE
+      ,l.ANIMATION AS GENRE_ANIMATION
+      ,l.COMEDY AS GENRE_COMEDY
+      ,l.CRIME AS GENRE_CRIME
+      ,l.DRAMA AS GENRE_DRAMA
+      ,l.FAMILY AS GENRE_FAMILY
+      ,l.FANTASY AS GENRE_FANTASY
+      ,l.HISTORY AS GENRE_HISTORY
+      ,l.HORROR AS GENRE_HORROR
+      ,l.MUSIC AS GENRE_MUSIC
+      ,l.MYSTERY AS GENRE_MYSTERY
+      ,l.ROMANCE AS GENRE_ROMANCE
+      ,l."SCIENCE-FICTION" AS GENRE_SCIENCE_FICTION
+      ,l.THRILLER AS GENRE_THRILLER
+      ,l.WAR AS GENRE_WAR
+      ,l.WESTERN AS GENRE_WESTERN
       ,j.COLLECTION_NAME
+      ,COALESCE(m.RECENTLY_WATCHED, 0) AS RECENTLY_WATCHED
+      ,CASE WHEN n.FILM_ID IS NOT NULL THEN 1 ELSE 0 END AS VALID_TITLE
+
     
-    FROM ALL_FEATURE_FILMS a
+    FROM ALL_FILMS a
     LEFT JOIN FILM_TITLE b
     ON a.FILM_ID = b.FILM_ID
     LEFT JOIN FILM_LETTERBOXD_STATS c
@@ -113,6 +144,12 @@ WITH BASE_TABLE AS (
     ON a.FILM_ID = j.FILM_ID
     LEFT JOIN FILM_LETTERBOXD_TOP_250 k
     ON a.FILM_ID = k.FILM_ID
+    LEFT JOIN FILM_ALGO_SCORE l
+    ON a.FILM_ID = l.FILM_ID
+    LEFT JOIN RECENTLY_WATCHED m
+    ON a.FILM_ID = m.FILM_ID
+    LEFT JOIN ALL_FEATURE_FILMS n
+    ON a.FILM_ID = n.FILM_ID
 
 """
 
@@ -250,9 +287,27 @@ ranking_columns = [
     'DIRECTOR_NAME',
     'FILM_YEAR',
     'FILM_DECADE',
+    'COLLECTION_NAME',
+    'RECENTLY_WATCHED',
     'FILM_GENRE',
     'ALL_FILM_GENRES',
-    'COLLECTION_NAME'
+    'GENRE_ACTION',
+    'GENRE_ADVENTURE',
+    'GENRE_ANIMATION',
+    'GENRE_COMEDY',
+    'GENRE_CRIME',
+    'GENRE_DRAMA',
+    'GENRE_FAMILY',
+    'GENRE_FANTASY',
+    'GENRE_HISTORY',
+    'GENRE_HORROR',
+    'GENRE_MUSIC',
+    'GENRE_MYSTERY',
+    'GENRE_ROMANCE',
+    'GENRE_SCIENCE_FICTION',
+    'GENRE_THRILLER',
+    'GENRE_WAR',
+    'GENRE_WESTERN'
 ]
 
 if 'dfs' not in st.session_state:
@@ -271,7 +326,6 @@ if 'dfs' not in st.session_state:
     top_actor_film_level_df_wide.columns = [actor_lookup_dict.get(x, x) for x in top_actor_film_level_df_wide.columns]
     eligible_watchlist_df = eligible_watchlist_df.merge(top_actor_film_level_df_wide, how='left', on='FILM_ID').fillna(0)
     st.session_state['dfs']['eligible_watchlist_df'] = eligible_watchlist_df
-    
 else:
     eligible_watchlist_df = st.session_state['dfs']['eligible_watchlist_df']
     all_film_titles = st.session_state['dfs']['all_film_titles']
@@ -292,6 +346,42 @@ def reset_dash():
     st.session_state['highest_allowed_position'] = 1
     st.session_state['lowest_allowed_position'] = film_position_max
 
+def get_poster_path(film_id):
+    poster_path = os.path.join(poster_dir, desensitise_case(film_id) + '.jpg')
+    if not os.path.exists(poster_path):
+        poster_path = os.path.join(poster_dir, 'f_00000.jpg')
+    return poster_path
+
+def film_card(film):
+    col1, col2, col3, col4 = st.columns([0.2, 0.1, 0.1, 0.7])
+    with col1:
+        # st.write("**{}**".format(int(film['FILM_POSITION'])))
+        st.markdown("""
+                    <style>
+                    .big-font {
+                        font-size:40px !important;
+                        text-align: center;
+                    }
+                    </style>
+                    """, unsafe_allow_html=True)
+        st.markdown('<p class="big-font"> {} </p>'.format(int(film['FILM_POSITION'])), unsafe_allow_html=True)
+    with col2:
+        poster_path = get_poster_path(film['FILM_ID'])
+        st.image(poster_path, width=75)
+    with col4:
+        card_text1 = f"**{film['FILM_TITLE']} ({film['FILM_YEAR']})**"
+        st.write(card_text1)
+        card_text2 = f"Watch Count: {film['FILM_WATCH_COUNT']:,}"
+        st.write(card_text2)
+        card_text3 = f"Letterboxd Rating: {film['FILM_RATING']}"
+        st.write(card_text3)
+        card_text4 = f"My Rating: {film['FILM_RATING_SCALED']:.4}"
+        st.write(card_text4)
+
+def display_film_grid(films_df):
+    for _, film in films_df.iterrows():
+        film_card(film)
+
 film_name_search = st.text_input('Enter Film Name:', on_change=reset_dash)
 film_name_search_list = film_name_search.split(' ')
 film_name_search_list = [''.join(ch for ch in x if ch.isalnum()) for x in film_name_search_list]
@@ -299,33 +389,55 @@ valid_titles = [x[0] for x in all_film_titles[['FILM_TITLE']].values]
 valid_titles = [x[0] + ' (' + str(x[1]) + ') - ' + x[2] for x in all_film_titles.values]
 for word in film_name_search_list:
     valid_titles = [x for x in valid_titles if word in ''.join(ch for ch in x if ch.isalnum()).lower()]
-# tmp_df = select_statement_to_df('SELECT a.FILM_TITLE, b.FILM_YEAR, a.FILM_ID FROM FILM_TITLE a LEFT JOIN FILM_YEAR b ON a.FILM_ID = b.FILM_ID WHERE FILM_TITLE LIKE "%{}%"'.format(film_name_search))
-# tmp_df['display_title'] = tmp_df['FILM_TITLE'] + ' (' + tmp_df['FILM_YEAR'].astype(str) + ')'
-# film_id_lookup_dict = {display_title:film_id for display_title, film_id in zip(tmp_df['display_title'], tmp_df['FILM_ID'])}
 
-if 0 < len(valid_titles) <= 20: st.session_state['display_dash'] = True
+title_index = None
+if len(valid_titles) == 0:
+    st.write('No Valid Titles - please try again')
+elif len(valid_titles) <= 20:
+    st.session_state['display_dash'] = True
+    if len(valid_titles) == 1:
+        title_index = 0
+elif len(film_name_search) > 0:
+    if st.checkbox('More than 20 titles - show all?'):
+        st.session_state['display_dash'] = True
 
 if st.session_state['display_dash']:
-    selected_film = st.radio('Select Film:', valid_titles, on_change=reset_dash)
-    selected_film_id = selected_film.split(' - ')[-1]
-    selected_record = eligible_watchlist_df[eligible_watchlist_df['FILM_ID']==selected_film_id]
-    valid_df = eligible_watchlist_df[eligible_watchlist_df['FILM_POSITION'].notnull()]
-    col1, col2 = st.columns([1,1])
-    with col1:
-        highest_allowed_position = st.number_input('Highest Position:', max_value=film_position_max, step=1, key='highest_allowed_position')
-    with col2:
-        lowest_allowed_position = st.number_input('Lowest Position:', max_value=film_position_max, step=1, key='lowest_allowed_position')
-    valid_df = valid_df[(valid_df['FILM_POSITION'] < st.session_state['lowest_allowed_position']) & (valid_df['FILM_POSITION'] > st.session_state['highest_allowed_position'])]
-    try:
-        tag_columns = [x for x in selected_record.columns if selected_record[x].values[0] == 1.0]
-    except:
-        tag_columns = []
-    for rcol in ranking_columns + tag_columns:
-        rcol_val = selected_record[rcol].values[0]
-        if rcol_val:
-            rcol_df = valid_df[valid_df[rcol]==rcol_val].sort_values('FILM_POSITION').reset_index(drop=True)[['FILM_ID', 'FILM_TITLE', 'FILM_POSITION']]
-            if len(rcol_df)>0:
-                st.write('{}={}'.format(rcol, rcol_val))
-                st.dataframe(rcol_df, hide_index=True)
-    st.write('All films:')
-    st.dataframe(valid_df.sort_values('FILM_POSITION'), hide_index=True)
+    selected_film = st.selectbox('Select Film:', valid_titles, on_change=reset_dash, index=title_index)
+    if selected_film:
+        selected_film_id = selected_film.split(' - ')[-1]
+        selected_record = eligible_watchlist_df[eligible_watchlist_df['FILM_ID']==selected_film_id]
+        col1, col2 = st.columns([1,1])
+        with col1:
+            highest_allowed_position = st.number_input('Highest Position:', step=1, key='highest_allowed_position')
+        with col2:
+            lowest_allowed_position = st.number_input('Lowest Position:', step=1, key='lowest_allowed_position')
+        valid_df = eligible_watchlist_df[eligible_watchlist_df['FILM_POSITION'].notnull()]
+        valid_df = valid_df[(valid_df['FILM_POSITION'] < st.session_state['lowest_allowed_position']) & (valid_df['FILM_POSITION'] > st.session_state['highest_allowed_position'])]
+        valid_df = valid_df.sort_values('FILM_POSITION')
+        st.write(selected_film_id)
+        # st.write(valid_df)
+        # st.write(selected_record)
+        # st.write(selected_record.loc[:, (selected_record != 0).all()])
+        col1, col2 = st.columns([0.5, 0.5])
+        with col1:
+            try:
+                tag_columns = [x for x in selected_record.columns if selected_record[x].values[0] == 1.0]
+                tag_columns = [x for x in tag_columns if x not in ranking_columns]
+            except:
+                tag_columns = []
+            for rcol in ranking_columns + tag_columns:
+                if rcol == 'RECENTLY_WATCHED':
+                    rcol_val = 1
+                else:
+                    rcol_val = selected_record[rcol].values[0]
+                if rcol_val:
+                    rcol_df = valid_df[valid_df[rcol]==rcol_val].sort_values('FILM_POSITION').reset_index(drop=True)
+                    container = st.expander('**{}={}**'.format(rcol, rcol_val), expanded=True)
+                    with container:
+                        display_film_grid(rcol_df.tail(50))
+            st.write('**All films:**')
+            display_film_grid(valid_df.tail(50))
+        with col2:
+            selected_record['FILM_POSITION'] = int((st.session_state['lowest_allowed_position'] + st.session_state['highest_allowed_position'])/2)
+            selected_record['FILM_RATING_SCALED'] = valid_df['FILM_RATING_SCALED'].mean()
+            display_film_grid(selected_record)

@@ -6,9 +6,7 @@ import plotly.express as px
 import yaml
 import streamlit as st
 from streamlit_extras.dataframe_explorer import dataframe_explorer
-import sys
-sys.path.insert(0, '../data_prep')
-from sqlite_utils import select_statement_to_df
+from watchlist_toolkit.data_prep.sqlite_utils import select_statement_to_df
 
 # Read the queries file
 with open('streamlit_queries.yaml', 'r') as file:

@@ -1,8 +1,6 @@
 import yaml
 from tqdm import tqdm
-import sys
-sys.path.insert(0, '../data_prep')
-from sqlite_utils import select_statement_to_df, df_to_table
+from watchlist_toolkit.data_prep.sqlite_utils import select_statement_to_df, df_to_table
 
 precomputed_queries_file = 'precompute_queries.yaml'
 

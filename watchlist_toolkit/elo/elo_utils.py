@@ -1,8 +1,6 @@
 # import numpy as np
 from random import choice, randint
-import sys
-sys.path.insert(0, '../data_prep')
-from sqlite_utils import select_statement_to_df, get_from_table
+from watchlist_toolkit.data_prep.sqlite_utils import select_statement_to_df, get_from_table
 
 ranking_select_statement = """
 

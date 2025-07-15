@@ -4,10 +4,8 @@ import pandas as pd
 from PIL import Image
 import plotly.express as px
 import os
-import sys
-sys.path.insert(0, '../data_prep')
-from sqlite_utils import select_statement_to_df
-from letterboxd_utils import desensitise_case
+from watchlist_toolkit.data_prep.sqlite_utils import select_statement_to_df
+from watchlist_toolkit.data_prep.letterboxd_utils import desensitise_case
 
 st.set_page_config(layout="wide")
 

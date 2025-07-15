@@ -7,9 +7,7 @@ import yaml
 import streamlit as st
 from streamlit_extras.dataframe_explorer import dataframe_explorer
 import altair as alt
-import sys
-sys.path.insert(0, '../data_prep')
-from sqlite_utils import select_statement_to_df
+from watchlist_toolkit.data_prep.sqlite_utils import select_statement_to_df
 # from algo_utils import return_comparison_df
 
 st.set_page_config(layout="wide")
