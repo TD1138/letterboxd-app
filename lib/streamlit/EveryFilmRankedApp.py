@@ -10,10 +10,6 @@ from letterboxd_utils import desensitise_case
 
 st.set_page_config(layout="wide")
 
-FILMS_PER_ROW = 8
-ROWS = 10
-FILMS_PER_PAGE = FILMS_PER_ROW * ROWS
-
 poster_dir = '..\\..\\db\\posters\\'
 
 all_film_titles_query = """
@@ -126,9 +122,10 @@ WITH BASE_TABLE AS (
       ,l.WESTERN AS GENRE_WESTERN
       ,j.COLLECTION_NAME
       ,COALESCE(m.RECENTLY_WATCHED, 0) AS RECENTLY_WATCHED
+      ,CASE WHEN n.FILM_ID IS NOT NULL THEN 1 ELSE 0 END AS VALID_TITLE
 
     
-    FROM ALL_FEATURE_FILMS a
+    FROM ALL_FILMS a
     LEFT JOIN FILM_TITLE b
     ON a.FILM_ID = b.FILM_ID
     LEFT JOIN FILM_LETTERBOXD_STATS c
@@ -153,6 +150,8 @@ WITH BASE_TABLE AS (
     ON a.FILM_ID = l.FILM_ID
     LEFT JOIN RECENTLY_WATCHED m
     ON a.FILM_ID = m.FILM_ID
+    LEFT JOIN ALL_FEATURE_FILMS n
+    ON a.FILM_ID = n.FILM_ID
 
 """
 
@@ -393,16 +392,19 @@ valid_titles = [x[0] + ' (' + str(x[1]) + ') - ' + x[2] for x in all_film_titles
 for word in film_name_search_list:
     valid_titles = [x for x in valid_titles if word in ''.join(ch for ch in x if ch.isalnum()).lower()]
 
+title_index = None
 if len(valid_titles) == 0:
     st.write('No Valid Titles - please try again')
 elif len(valid_titles) <= 20:
     st.session_state['display_dash'] = True
+    if len(valid_titles) == 1:
+        title_index = 0
 elif len(film_name_search) > 0:
     if st.checkbox('More than 20 titles - show all?'):
         st.session_state['display_dash'] = True
 
 if st.session_state['display_dash']:
-    selected_film = st.selectbox('Select Film:', valid_titles, on_change=reset_dash, index=None)
+    selected_film = st.selectbox('Select Film:', valid_titles, on_change=reset_dash, index=title_index)
     if selected_film:
         selected_film_id = selected_film.split(' - ')[-1]
         selected_record = eligible_watchlist_df[eligible_watchlist_df['FILM_ID']==selected_film_id]
