@@ -18,6 +18,7 @@ def download_letterboxd_zip(hide_actions=True):
         chromedriver_path = os.path.join(folder, "chromedriver.exe")
         service = Service(chromedriver_path)
         chrome_options = webdriver.ChromeOptions()
+        chrome_options.add_argument("--log-level=3")
         if hide_actions: chrome_options.add_argument("--headless")
         download_dir =  os.getenv('PROJECT_PATH')+'/db/raw_exports/'
         download_dir = download_dir.replace('/', '\\')
