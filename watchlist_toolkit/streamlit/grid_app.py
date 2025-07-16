@@ -6,6 +6,7 @@ import plotly.express as px
 import os
 from watchlist_toolkit.data_prep.sqlite_utils import select_statement_to_df
 from watchlist_toolkit.data_prep.letterboxd_utils import desensitise_case
+from watchlist_toolkit.utils.sql_loader import read_sql
 
 st.set_page_config(layout="wide")
 
@@ -21,91 +22,13 @@ if 'dfs' not in st.session_state:
     watchlist_df = select_statement_to_df(watchlist_statement)
     st.session_state['dfs']['watchlist'] = watchlist_df
 
-    algo_features_df = select_statement_to_df("""
-    SELECT a.*, CASE WHEN b.FILM_ID IS NOT NULL THEN 1 ELSE 0 END AS WATCHED, c.LETTERBOXD_URL, d.FILM_POSITION
-    FROM FILM_ALGO_SCORE a
-    LEFT JOIN WATCHED b
-    ON a.FILM_ID = b.FILM_ID
-    LEFT JOIN FILM_TITLE c
-    ON a.FILM_ID = c.FILM_ID
-    LEFT JOIN PERSONAL_RANKING d
-    ON a.FILM_ID = d.FILM_ID
-                                              """)
+    algo_features_df = select_statement_to_df(read_sql('algo_features_streamlit'))
     non_features = ['FILM_TOP_250', 'FILM_RUNTIME', 'DIRECTOR_MEAN_RATING', 'I_VS_LB']
     all_features = algo_features_df.columns
     keep_features = [x for x in all_features if x not in non_features]
     algo_features_df['IN_LETTERBOXD_TOP_250'] = np.where(algo_features_df['FILM_TOP_250']<251, 1, 0)
     # algo_features_df = algo_features_df[keep_features]
-    keyword_query = """
-    WITH BASE_TABLE AS (
-        
-        SELECT
-        
-            a.FILM_ID
-            ,c.FILM_TITLE
-            ,d.KEYWORD
-            ,d.KEYWORD_ID
-            ,e.FILM_RATING
-            ,f.FILM_RATING_SCALED
-            ,CASE WHEN f.FILM_RATING_SCALED IS NOT NULL THEN 1 ELSE 0 END AS RATED
-        
-        FROM ALL_FEATURE_FILMS a
-        LEFT JOIN CONTENT_TYPE b
-        ON a.FILM_ID = b.FILM_ID
-        LEFT JOIN FILM_TITLE c
-        ON a.FILM_ID = c.FILM_ID
-        LEFT JOIN FILM_KEYWORDS d
-        ON a.FILM_ID = d.FILM_ID
-        LEFT JOIN FILM_LETTERBOXD_STATS e
-        ON a.FILM_ID = e.FILM_ID
-        LEFT JOIN PERSONAL_RATING f
-        ON a.FILM_ID = f.FILM_ID
-        
-        WHERE b.CONTENT_TYPE = 'movie'
-        
-        )
-        
-    , SCORE_TABLE AS (
-
-        SELECT
-
-        KEYWORD_ID
-        ,KEYWORD
-        ,AVG(FILM_RATING) AS MEAN_RATING
-        ,AVG(FILM_RATING_SCALED) AS MY_MEAN_RATING
-        ,AVG(FILM_RATING_SCALED) - AVG(FILM_RATING) AS MY_VARIANCE
-        ,((AVG(FILM_RATING_SCALED) - AVG(FILM_RATING)) * ((SUM(RATED)+0.0)/COUNT(*))) AS VARIANCE_SCORE
-        ,COUNT(*) AS KEYWORD_COUNT
-        ,SUM(RATED) AS MY_RATING_COUNT
-        ,(SUM(RATED)+0.0)/COUNT(*) AS SCALER
-        
-        FROM BASE_TABLE
-        
-        WHERE KEYWORD_ID > -1
-        
-        GROUP BY KEYWORD
-        
-        HAVING MY_RATING_COUNT > 0
-        AND KEYWORD_COUNT >= 50
-
-    )
-
-    SELECT
-        a.FILM_ID
-        ,a.KEYWORD_ID
-        ,b.KEYWORD
-        ,b.KEYWORD_COUNT
-        ,b.MY_RATING_COUNT
-        ,b.MEAN_RATING
-        ,b.MY_MEAN_RATING
-        
-    FROM FILM_KEYWORDS a
-    LEFT JOIN SCORE_TABLE b
-    ON a.KEYWORD_ID = b.KEYWORD_ID
-
-    WHERE b.KEYWORD_ID IS NOT NULL
-"""
-    keyword_df = select_statement_to_df(keyword_query)
+    keyword_df = select_statement_to_df(read_sql('keyword_query_grid'))
     keyword_df['COUNT'] = 1
     keyword_df_wide = pd.pivot_table(keyword_df, values='COUNT', index=['FILM_ID'], columns=['KEYWORD']).fillna(0).reset_index()
     keyword_valid_cols = ['FILM_ID'] + [x for x in keyword_df_wide if x not in algo_features_df.columns]
