@@ -266,67 +266,7 @@ GROUP BY FILM_ID, FILM_TITLE
 
 """
 
-top_actor_film_level_query = """
-
-WITH BASE_TABLE AS (
-
-    SELECT
-
-        a.FILM_ID
-        ,d.FILM_TITLE
-        ,b.PERSON_ID
-        ,e.PERSON_NAME AS ACTOR_NAME
-        ,CASE WHEN c.FILM_ID IS NULL THEN 0 ELSE 1 END AS WATCHED
-        ,CASE WHEN f.FILM_RATING_SCALED IS NOT NULL THEN 1 ELSE 0 END AS RATED
-        ,f.FILM_RATING_SCALED
-
-    FROM ALL_FEATURE_FILMS a
-    
-    LEFT JOIN FILM_CAST b
-    ON a.FILM_ID = b.FILM_ID
-    
-    LEFT JOIN WATCHED c
-    ON a.FILM_ID = c.FILM_ID
-    
-    LEFT JOIN FILM_TITLE d
-    ON a.FILM_ID = d.FILM_ID
-
-    LEFT JOIN PERSON_INFO e
-    ON b.PERSON_ID = e.PERSON_ID
-
-    LEFT JOIN PERSONAL_RATING f
-    ON a.FILM_ID = f.FILM_ID
-
-    WHERE e.PERSON_NAME IS NOT NULL
-    
-    )
-    
-, ACTOR_TABLE AS (
-
-    SELECT
-
-    PERSON_ID
-    ,SUM(WATCHED) AS TOTAL_WATCHED
-    
-    FROM BASE_TABLE
-    
-    GROUP BY PERSON_ID
-    
-    HAVING TOTAL_WATCHED >= 20
-)
-
-SELECT
-    
-     a.FILM_ID
-    ,a.PERSON_ID
-    ,a.ACTOR_NAME
-    ,1 AS ACTOR_IN_FILM
-    
-FROM BASE_TABLE a
-INNER JOIN ACTOR_TABLE b
-ON a.PERSON_ID = b.PERSON_ID
-
-"""
+top_actor_film_level_query = read_sql('top_actor_film_level_query')
 
 def scale_col(df, column, suffix='', a=0, b=1):
     col_min = df[column].min()

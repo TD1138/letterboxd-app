@@ -8,6 +8,7 @@ from datetime import datetime
 from sqlite_utils import select_statement_to_df, insert_record_into_table
 from letterboxd_utils import get_poster_url, desensitise_case, resensitise_case
 from tmdb_utils import get_portrait_url
+from watchlist_toolkit.utils.sql_loader import read_sql
 
 posters_dir   = 'C:\\Users\\tom\\Desktop\\dev\\PersonalProjects\\letterboxd-app\\db\\posters\\'
 portraits_dir = 'C:\\Users\\tom\\Desktop\\dev\\PersonalProjects\\letterboxd-app\\db\\portraits\\'
@@ -54,13 +55,7 @@ def update_posters(total_to_download=100):
 
     posters = [x.replace('.jpg', '') for x in os.listdir(posters_dir)]
 
-    all_films = select_statement_to_df("""
-                                        SELECT a.FILM_ID
-                                        FROM ALL_FILMS a
-                                        LEFT JOIN FILM_LETTERBOXD_STATS b
-                                        ON a.FILM_ID = b.FILM_ID
-                                        ORDER BY b.FILM_WATCH_COUNT DESC
-                                       """)['FILM_ID']
+    all_films = select_statement_to_df(read_sql('update_posters_select_statement'))['FILM_ID']
     all_films_desensitised = [desensitise_case(x) for x in all_films]
     films_no_posters = [x for x in all_films_desensitised if x not in posters][:total_to_download]
     print('There are {} films to get posters for ordered by letterboxd watch count'.format(len(films_no_posters)))
@@ -70,35 +65,7 @@ def update_posters(total_to_download=100):
 
 def update_portraits(total_to_download=100, verbose=False):
     portraits = [x.replace('.jpg', '') for x in os.listdir(portraits_dir)]
-    portrait_select_statement = """
-        WITH BASE_TABLE AS (
-
-            SELECT DISTINCT b.PERSON_ID, c.KNOWN_FOR_DEPARTMENT, a.FILM_ID, a.FILM_WATCH_COUNT
-            FROM FILM_LETTERBOXD_STATS a
-            LEFT JOIN FILM_CREW b
-            ON a.FILM_ID = b.FILM_ID
-            LEFT JOIN PERSON_INFO c
-            ON b.PERSON_ID = c.PERSON_ID 
-            WHERE b.PERSON_ID > 0
-            AND c.KNOWN_FOR_DEPARTMENT IS NOT NULL
-
-            -- UNION ALL
-
-            -- SELECT DISTINCT b.PERSON_ID, c.KNOWN_FOR_DEPARTMENT, a.FILM_ID, a.FILM_WATCH_COUNT
-            -- FROM FILM_LETTERBOXD_STATS a
-            -- LEFT JOIN FILM_CAST b
-            -- ON a.FILM_ID = b.FILM_ID
-            -- LEFT JOIN PERSON_INFO c
-            -- ON b.PERSON_ID = c.PERSON_ID 
-            -- WHERE b.PERSON_ID > 0
-            -- AND c.KNOWN_FOR_DEPARTMENT IS NOT NULL
-        )
-
-        SELECT PERSON_ID, SUM(FILM_WATCH_COUNT) AS TOTAL_WATCH_COUNT
-        FROM BASE_TABLE
-        GROUP BY PERSON_ID
-        ORDER BY TOTAL_WATCH_COUNT DESC
-    """
+    portrait_select_statement = read_sql('portrait_select_statement')
     all_people = [str(int(x)) for x in select_statement_to_df(portrait_select_statement)['PERSON_ID'] if x]
     people_no_portrait = [x for x in all_people if x not in portraits]
     portrait_missing = [str(int(x)) for x in select_statement_to_df('SELECT PERSON_ID FROM PORTRAIT_MISSING')['PERSON_ID'] if x]

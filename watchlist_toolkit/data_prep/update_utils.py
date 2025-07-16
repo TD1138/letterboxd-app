@@ -5,6 +5,7 @@ from enrichment_utils import update_streaming_info, ingest_film, ingest_films
 from tmdb_utils import update_tmbd_metadata
 from letterboxd_utils import update_letterboxd_stats
 from dotenv import load_dotenv
+from watchlist_toolkit.utils.sql_loader import read_sql
 
 load_dotenv(override=True)
 
@@ -114,157 +115,13 @@ def update_upcoming_films(film_ids=None, film_limit=100, dryrun=False, verbose=F
 
     
 
-oldest_letterboxd_stats_select_statement = ("""
-
-SELECT
-	 a.FILM_ID
-	,COALESCE(julianday('now') - julianday(b.CREATED_AT), 99) AS DAYS_SINCE_LAST_UPDATE
-	
-FROM ALL_RELEASED_FILMS a
-LEFT JOIN FILM_LETTERBOXD_STATS b
-ON a.FILM_ID = b.FILM_ID
-
-ORDER BY DAYS_SINCE_LAST_UPDATE DESC
-
-""")
-
-oldest_tmdb_metadata_select_statement = ("""
-
-SELECT
-	 a.FILM_ID
-	,COALESCE(julianday('now') - julianday(b.CREATED_AT), 99) AS DAYS_SINCE_LAST_UPDATE
-	
-FROM ALL_RELEASED_FILMS a
-LEFT JOIN FILM_TMDB_STATS b
-ON a.FILM_ID = b.FILM_ID
-
-ORDER BY DAYS_SINCE_LAST_UPDATE DESC
-
-""")
-
-oldest_streaming_select_statement = ("""
-
-WITH DAYS_SINCE_LAST_STREAMING_UPDATE AS (
-
-SELECT FILM_ID, ROUND(AVG(DAYS_SINCE_LAST_UPDATE), 0) AS DAYS_SINCE_LAST_UPDATE 
-FROM ( SELECT FILM_ID, ROUND(COALESCE(julianday('now') - julianday(CREATED_AT), 99), 0) AS DAYS_SINCE_LAST_UPDATE FROM FILM_STREAMING_SERVICES )
-GROUP BY FILM_ID
-
-)
-
-SELECT a.FILM_ID
-FROM FILM_ALGO_SCORE a
-LEFT JOIN DAYS_SINCE_LAST_STREAMING_UPDATE b
-ON a.FILM_ID = b.FILM_ID
-ORDER BY COALESCE(a.ALGO_SCORE,0.01) * COALESCE(a.ALGO_SCORE,0.01) * COALESCE(b.DAYS_SINCE_LAST_UPDATE, 365) DESC
-
-""")
-
-popular_letterboxd_stats_select_statement = ("""
-
-WITH BASE_TABLE AS (
-
-	SELECT
-	
-		a.FILM_ID
-		,b.FILM_TITLE
-		,c.FILM_WATCH_COUNT
-		,ROUND(COALESCE(julianday('now') - julianday(c.CREATED_AT), 99), 0) AS DAYS_SINCE_LAST_UPDATE
-	
-	FROM ALL_FEATURE_FILMS a
-	LEFT JOIN FILM_TITLE b
-	ON a.FILM_ID = b.FILM_ID
-	LEFT JOIN FILM_LETTERBOXD_STATS c
-	ON a.FILM_ID = c.FILM_ID
-
-	)
-	
-SELECT
-	*
-	,ROUND(POWER(FILM_WATCH_COUNT, 1) * POWER(DAYS_SINCE_LAST_UPDATE, 1.5)) AS SORT_KEY
-FROM BASE_TABLE
-ORDER BY SORT_KEY DESC
-
-""")
-
-letterboxd_top_250_select_statement = ("""
-
-SELECT
-
-	a.FILM_ID
-	,b.FILM_TITLE
-	,c.FILM_WATCH_COUNT
-	,ROUND(COALESCE(julianday('now') - julianday(c.CREATED_AT), 99), 0) AS DAYS_SINCE_LAST_UPDATE
-
-FROM ALL_FEATURE_FILMS a
-LEFT JOIN FILM_TITLE b
-ON a.FILM_ID = b.FILM_ID
-LEFT JOIN FILM_LETTERBOXD_STATS c
-ON a.FILM_ID = c.FILM_ID
-INNER JOIN FILM_LETTERBOXD_TOP_250 d
-ON a.FILM_ID = d.FILM_ID
-
-WHERE DAYS_SINCE_LAST_UPDATE > 7
-
-ORDER BY DAYS_SINCE_LAST_UPDATE DESC
-
-""")
-
+# External SQL files loaded via watchlist_toolkit.utils.sql_loader
 current_year = int(datetime.now().year)
 
-recent_films_select_statement = ("""
-
-SELECT
-	a.FILM_ID
-	
-FROM ALL_FILMS a
-
-LEFT JOIN FILM_YEAR b
-ON a.FILM_ID = b.FILM_ID
-
-LEFT JOIN FILM_RELEASE_INFO c
-ON a.FILM_ID = c.FILM_ID
-
-LEFT JOIN FILM_LAST_UPDATED_DETAIL d
-ON a.FILM_ID = d.FILM_ID
-
-LEFT JOIN CONTENT_TYPE e
-ON a.FILM_ID = e.FILM_ID
-
-WHERE e.CONTENT_TYPE = 'movie'
-AND COALESCE(c.FILM_STATUS, "None")  = "Released"
-AND b.FILM_YEAR BETWEEN {} AND {}
-AND d.TABLE_NAME = 'FILM_LETTERBOXD_STATS'
-                                 
-ORDER BY d.DAYS_SINCE_LAST_UPDATE DESC
-
-""".format(current_year-1, current_year))
-
-upcoming_films_select_statement = ("""
-
-SELECT
-                                   
-	a.FILM_ID
-	
-FROM ALL_FILMS a
-
-LEFT JOIN FILM_YEAR b
-ON a.FILM_ID = b.FILM_ID
-
-LEFT JOIN FILM_RELEASE_INFO c
-ON a.FILM_ID = c.FILM_ID
-
-LEFT JOIN FILM_LAST_UPDATED d
-ON a.FILM_ID = d.FILM_ID
-
-LEFT JOIN CONTENT_TYPE e
-ON a.FILM_ID = e.FILM_ID
-
-WHERE e.CONTENT_TYPE = 'movie'
-AND COALESCE(c.FILM_STATUS, "None") != "Released"
-AND b.FILM_YEAR >= {}
-AND d.MEAN_DAYS_SINCE_LAST_UPDATE > 7
-                                 
-ORDER BY d.MEAN_DAYS_SINCE_LAST_UPDATE DESC
-
-""".format(current_year))
+oldest_letterboxd_stats_select_statement = read_sql('oldest_letterboxd_stats_select_statement')
+oldest_tmdb_metadata_select_statement = read_sql('oldest_tmdb_metadata_select_statement')
+oldest_streaming_select_statement = read_sql('oldest_streaming_select_statement')
+popular_letterboxd_stats_select_statement = read_sql('popular_letterboxd_stats_select_statement')
+letterboxd_top_250_select_statement = read_sql('letterboxd_top_250_select_statement')
+recent_films_select_statement = read_sql('recent_films_select_statement').format(current_year-1, current_year)
+upcoming_films_select_statement = read_sql('upcoming_films_select_statement').format(current_year)
