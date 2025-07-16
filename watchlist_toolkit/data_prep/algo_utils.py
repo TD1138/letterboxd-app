@@ -6,6 +6,17 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.linear_model import LinearRegression
 from sqlite_utils import select_statement_to_df, df_to_table, table_to_df
 import shap
+from watchlist_toolkit.utils.sql_loader import read_sql
+
+# Override inline SQL strings with external files
+try:
+    all_features_query = read_sql('all_features_query')
+    keyword_query = read_sql('keyword_query')
+    my_rating_query = read_sql('my_rating_query')
+    director_rating_query = read_sql('director_rating_query')
+except FileNotFoundError:
+    # Fallback to embedded strings during transition
+    pass
 
 all_features_query = """
 
