@@ -5,6 +5,16 @@ from PIL import Image
 import os
 from watchlist_toolkit.data_prep.sqlite_utils import select_statement_to_df
 from watchlist_toolkit.data_prep.letterboxd_utils import desensitise_case
+from watchlist_toolkit.utils.sql_loader import read_sql
+
+# Replace inline SQL with external files (keeps fallback if missing)
+try:
+    all_film_titles_query = read_sql('all_film_titles_query')
+    all_features_query   = read_sql('all_features_query_efr')
+    keyword_query        = read_sql('keyword_query_efr')
+    top_actor_film_level_query = read_sql('top_actor_film_level_query')
+except FileNotFoundError:
+    pass
 
 st.set_page_config(layout="wide")
 
