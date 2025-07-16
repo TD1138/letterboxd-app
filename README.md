@@ -94,7 +94,7 @@ See `template.env` for the full list.
 | Skip the Selenium download step | `python lib/data_prep/daily_update.py nozip` |
 | Run only the ML algorithm | `python lib/data_prep/algo_utils.py` (`run_algo()` entry) |
 | Start dashboards | `streamlit run lib/streamlit/LetterboxdApp.py` |
-| Test the watch-list grid prototype | `streamlit run lib/streamlit/grid_app.py` |
+| Test the watch-list grid prototype | `streamlit run watchlist_toolkit/streamlit/LetterboxdExplorerApp.py` |
 
 ---
 

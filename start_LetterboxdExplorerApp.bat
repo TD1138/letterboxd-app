@@ -1,4 +1,4 @@
 @REM cd C:/Users/tomdevine/desktop/dev/PersonalProjects/letterboxd-app
 call letterboxd-env/scripts/activate
 cd watchlist_toolkit/streamlit
-streamlit run grid_app.py --server.port 8515
+streamlit run LetterboxdExplorerApp.py --server.port 8515
