@@ -18,15 +18,16 @@ A full end-to-end pipeline that ingests your personal [Letterboxd](https://lette
 
 ```
 letterboxd-app/
-├── lib/               # All Python source code
-│   ├── data_prep/     # ETL, enrichment, ML, utility modules
-│   ├── elo/           # (Future) Elo-style ranking helpers
-│   └── streamlit/     # Streamlit apps & pre-computed query YAML
-├── db/                # SQLite database & raw export cache (ignored by git)
-├── creds/             # OAuth / API credentials (ignored by git)
-├── notebooks/         # Jupyter notebooks for exploration (optional)
-├── requirements.txt   # Python dependencies
-└── README.md          # You are here 🌟
+├── watchlist_toolkit/     # All Python source code
+│   ├── data_prep/         # ETL, enrichment, ML, utility modules
+│   ├── elo/               # (Future) Elo-style ranking helpers
+│   ├── notebooks/         # Jupyter notebooks for exploration (optional)
+│   └── streamlit/         # Streamlit apps & pre-computed query YAML
+│   └── utils/             # General utilities
+├── db/                    # SQLite database & raw export cache (ignored by git)    
+├── creds/                 # OAuth / API credentials (ignored by git)
+├── requirements.txt       # Python dependencies
+└── README.md              # You are here 🌟
 ```
 
 ---
@@ -56,14 +57,14 @@ letterboxd-app/
    # then edit .env with your Letterboxd credentials, GCP bucket, etc.
    ```
 
-5. **Run the initial update** (downloads export, builds DB, trains model, precalculates views)
+5. **Run the daily update** (downloads export, builds DB, trains model, precalculates views)
    ```bash
    python lib/data_prep/daily_update.py
    ```
 
 6. **Launch the Streamlit app**
    ```bash
-   streamlit run lib/streamlit/LetterboxdApp.py
+   streamlit run lib/streamlit/LetterboxdExplorerApp.py
    ```
    Open the local URL shown in the terminal (default: http://localhost:8501).
 
@@ -93,8 +94,8 @@ See `template.env` for the full list.
 | Full daily update + model training | `python lib/data_prep/daily_update.py` |
 | Skip the Selenium download step | `python lib/data_prep/daily_update.py nozip` |
 | Run only the ML algorithm | `python lib/data_prep/algo_utils.py` (`run_algo()` entry) |
-| Start dashboards | `streamlit run lib/streamlit/LetterboxdApp.py` |
-| Test the watch-list grid prototype | `streamlit run watchlist_toolkit/streamlit/LetterboxdExplorerApp.py` |
+| Start the Film Ranking App | `streamlit run lib/streamlit/EveryFilmRankedApp.py` |
+| Start the watch-list grid prototype | `streamlit run watchlist_toolkit/streamlit/LetterboxdExplorerApp.py` |
 
 ---
 
