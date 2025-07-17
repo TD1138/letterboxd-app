@@ -9,8 +9,8 @@ from watchlist_toolkit.utils.sql_loader import read_sql
 
 # Load SQL files
 all_film_titles_query = read_sql('all_film_titles_query')
-all_features_query   = read_sql('all_features_query_efr')
-keyword_query        = read_sql('keyword_query_efr')
+all_features_query    = read_sql('all_features_query_efr')
+keyword_query         = read_sql('keyword_query_efr')
 top_actor_film_level_query = read_sql('top_actor_film_level_query')
 
 st.set_page_config(layout="wide")
