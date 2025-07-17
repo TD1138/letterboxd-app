@@ -27,9 +27,12 @@ watchlist_toolkit/data_prep/update_utils.py
 watchlist_toolkit/elo/__init__.py
 watchlist_toolkit/elo/elo_utils.py
 watchlist_toolkit/streamlit/EveryFilmRankedApp.py
-watchlist_toolkit/streamlit/EveryFilmRankedAppOLD.py
-watchlist_toolkit/streamlit/LetterboxdApp.py
-watchlist_toolkit/streamlit/LetterboxdAppTIMINGS.py
-watchlist_toolkit/streamlit/StreamlitTesting.py
+watchlist_toolkit/streamlit/LetterboxdExplorerApp.py
 watchlist_toolkit/streamlit/__init__.py
-watchlist_toolkit/streamlit/grid_app.py
+watchlist_toolkit/streamlit/archive/EveryFilmRankedAppOLD.py
+watchlist_toolkit/streamlit/archive/LetterboxdApp.py
+watchlist_toolkit/streamlit/archive/LetterboxdAppTIMINGS.py
+watchlist_toolkit/streamlit/archive/StreamlitTesting.py
+watchlist_toolkit/streamlit/archive/__init__.py
+watchlist_toolkit/utils/__init__.py
+watchlist_toolkit/utils/sql_loader.py
